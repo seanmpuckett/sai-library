@@ -1,6 +1,6 @@
 {
   "name": "sai-library",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Runtime library for sai-language compiled scripts.",
   "main": "sailib.js",
   "scripts": {
