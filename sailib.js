@@ -1240,3 +1240,34 @@ SAILib.finalizePrototype = function(proto) {
   };
 }
 
+// create
+//
+// Function called by compiled SAI to instantiate new SAI objects by name.
+// The following code is overridden when running SAI in on-the-fly mode.
+//
+SAILib._protocache = {};
+SAILib.create = function(name,parameters) {
+  var proto=undefined;
+  if (!(proto=this._protocache[name])) {
+    proto=this._protocache[name]=require(name);
+  }
+  if (!proto) throw new Error('SAI.Create: Do not know how to create SAI object "'+name+'".');
+  var obj=Object.create(proto); 
+  if (obj.Constructor) obj.Constructor();
+  if (obj.Instantiate) obj.Instantiate.apply(obj,parameters);
+  return obj;
+}
+
+// _prototype
+//
+// Prototype for SAI objects
+//
+SAILib._prototype = function() {
+  this.Constructor=function(){};
+  this.__tobelocked=[];
+  this.__tobefrozen=[];
+  this.__contracts=[];
+  this.__unverified=true;
+  this.isof={};
+}
+
