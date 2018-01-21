@@ -1,0 +1,16 @@
+{
+  "name": "sai-library",
+  "version": "1.0.0",
+  "description": "Runtime library for sai-language compiled scripts.",
+  "main": "sailib.js",
+  "scripts": {
+    "test": "echo \"Test suite is integrated with sai-language.\" && exit 0"
+  },
+  "keywords": [
+    "sai",
+    "language",
+    "runtime"
+  ],
+  "author": "Sean M Puckett <seanmpuckett@gmail.com>",
+  "license": "MIT"
+}
