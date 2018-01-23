@@ -186,19 +186,19 @@ SAILib.generator=function(i) {
 //
 // given an object, create and invoke an iterator for it.
 //
-SAILib.iterate=function(a) { // test 'sow *'
+SAILib.iterate=function(a) { // full coverage pass
   if (a===undefined) { // coverage(1,"iterate"); // pass
     return undefined;
   }
   if (mustIterate(a)) {
-    coverage(2,"iterate");
+    //coverage(2,"iterate");
     return SAILib.iterator(a);
   }
   if (a[Symbol.iterator]) { // coverage(3,"iterate"); // pass
     return a[Symbol.iterator](); 
   }
-  if (isArray(a)) {
-    coverage(4,"iterate");
+  if (isArray(a)) { // this path will only be executed if Array doesn't have a built-in iterator
+    //coverage(4,"iterate");
     return function*(){ for (var i in a) yield a[i]; }();
   }
   if (isObject(a)) { // coverage(5,"iterate"); // pass
