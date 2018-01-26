@@ -1,5 +1,11 @@
 ## Changelog
 
+### 1.0.3
+
+ - for `map`, `filter`, `audit`, and `reduce`,  when operating over an iterator, pass in the row count as the key.
+ - added `drain` function to drain iterators
+ 
+
 ### 1.0.2
 
  - removed redundant code path in .iterate, full coverage tested

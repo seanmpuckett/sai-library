@@ -234,6 +234,20 @@ SAILib.collect=function(a) { // full coverage pass
   return SAILib._collect(a);
 }
 
+// drain
+//
+// drain a generator, throwing values away
+//
+SAILib.drain=function(a) {
+  if (undefined===a) {
+    return;
+  }
+  if (!mustIterate(a)) {
+    return;
+  }
+  for (var val of a); // throw away
+}
+
 // sort
 //
 // Given a value, force it into an array, then sort it.
@@ -344,11 +358,13 @@ SAILib.audit = function(a,f) { // full coverage pass
   } else if (mustIterate(a)) { // coverage(2,"audit");
     a=SAILib.iterator(a);
     return function *(){
-      for (var val of a) { f(val); yield val; }
+      var k=0;
+      for (var val of a) { f(val,k++); yield val; }
     }(); 
   } else if (isObject(a)) { // coverage(3,"audit"); 
     for (var k in a) f(a[k],k);
   }
+  // coverage(4,"audit");
   return a;
 }
 
@@ -456,7 +472,8 @@ SAILib.map = function(a,f) { // full coverage pass
   } else if (mustIterate(a)) { // coverage(3,"map"); // test 'map iterable'
     a=SAILib.iterator(a);
     return function *(){
-      for (var val of a) yield f(val);
+      var k=0;
+      for (var val of a) yield f(val, k++);
     }();
   } else if (isObject(a)) { // coverage(4,"map"); // test 'map traits'
     var r={};
@@ -489,8 +506,9 @@ SAILib.filter = function(a,f) { // full coverage pass
   } else if (mustIterate(a)) { // coverage(3,"filter"); // test 'filter iterator'
     a=SAILib.iterator(a);
     return function *(){
+      var k=0;
       for (var val of a) {
-        if (f(val)) yield val;
+        if (f(val, k++)) yield val;
       }
     }();
   } else if (isObject(a)) { // coverage(4,"filter"); // test 'filter traits*'
@@ -543,9 +561,10 @@ SAILib.reduce = function(a,f,accum) { // full coverage pass
       if (undefined===accum) { // coverage(8,"reduce");
         accum=step.value;
         step=a.next();
+        k++;
       }
       while (!step.done) {
-        accum=f(accum,step.value);
+        accum=f(accum,step.value,k++);
         step=a.next();
       }
       yield accum;
