@@ -208,6 +208,58 @@ SAILib.iterate=function(a) { // full coverage pass
   return function*(){ yield a; }();
 }
 
+// _kviterate (key value iterate)
+//
+// return an iterator that echoes an iterator
+// but returns a row counter as well
+//
+SAILib._kviterate=function*(a) {
+  var i=0;
+  for (var v of a) {
+    yield [i++, v];
+  }
+}
+
+// kviterate (key value iterate)
+//
+// given any object or value, create and invoke an iterator for it.
+// for every available element, the iterater will return an array with key, value
+// This is used by EVERY
+//
+SAILib.kviterate=function(a) { // full coverage pass
+  if (a===undefined) { //coverage(1,"kviterate"); // pass
+    return function*(){}();
+  }
+  if (mustIterate(a)) {
+    //coverage(2,"kviterate");
+    return SAILib._kviterate(SAILib.iterator(a));
+  }
+  if (a[Symbol.iterator]) { coverage(3,"kviterate"); // pass
+    return SAILib._kviterate(a[Symbol.iterator]()); 
+  }
+  if (isArray(a)) { // this path will only be executed if Array doesn't have a built-in iterator
+    //coverage(4,"kviterate");
+    return function*(){
+      var i=0,l=a.length;
+      while (i<l) {
+        yield [i++,a[l]];
+      }
+    }();
+  }
+  if (isObject(a)) { 
+    //coverage(5,"kviterate"); // pass
+    return function*(){ 
+      for (var i in a) {
+        yield [i,a[i]]; 
+      }
+    }();
+  }
+  //coverage(6,"kviterate"); // pass
+  return function*(){ 
+    yield [0, a]; 
+  }();
+}
+
 // _collect (worker)
 //
 // given an iterator, create an array of all of its yielded values.
