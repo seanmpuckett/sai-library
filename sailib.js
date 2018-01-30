@@ -234,7 +234,8 @@ SAILib.kviterate=function(a) { // full coverage pass
     //coverage(2,"kviterate");
     return SAILib._kviterate(SAILib.iterator(a));
   }
-  if (a[Symbol.iterator]) { coverage(3,"kviterate"); // pass
+  if (a[Symbol.iterator]) { 
+    //coverage(3,"kviterate"); // pass
     return SAILib._kviterate(a[Symbol.iterator]()); 
   }
   if (isArray(a)) { // this path will only be executed if Array doesn't have a built-in iterator
@@ -1327,6 +1328,18 @@ SAILib.create = function(name,parameters) {
   if (obj.Constructor) obj.Constructor();
   if (obj.Instantiate) obj.Instantiate.apply(obj,parameters);
   return obj;
+}
+
+// singleton
+//
+// Function called by compiled SAI to instantiate singleton SAI objects by name.
+//
+SAILib._singletoncache = {};
+SAILib.singleton = function(name,parameters) {
+  if (SAILib._singletoncache[name]) {
+    return SAILib._singletoncache[name];
+  }
+  return SAILib._singletoncache[name]=SAILib.create(name,parameters);
 }
 
 // _prototype

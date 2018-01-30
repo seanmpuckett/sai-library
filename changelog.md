@@ -1,5 +1,11 @@
 ## Changelog
 
+### 1.0.5
+
+ - removed spurious coverage indicator
+ - added new function `singleton` for creating singleton objects
+
+
 ### 1.0.4
 
  - new function `kviterator` for the use of the `every` keyword.
