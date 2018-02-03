@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.0.6
+
+ - changes to `create` to fix issues with compiled projects
+ 
+
 ### 1.0.5
 
  - removed spurious coverage indicator

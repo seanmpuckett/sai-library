@@ -1,5 +1,7 @@
 "use strict";
 
+var FS = require('fs');
+
 ///////////////////////////////////////////////
 //
 // SAI Runtime Library
@@ -1304,7 +1306,9 @@ SAILib.finalizePrototype = function(proto) {
     delete proto.__unverified;
     delete proto.__contracts;
   }
+  //console.log("finalizing "+proto.isa);
   proto.constructor=function() {
+    //console.log("constructor for "+proto.isa);
     var obj=Object.create(proto);
     if (obj.Constructor) obj.Constructor();
     if (obj.Instantiate) obj.Instantiate.apply(obj,arguments);
@@ -1315,18 +1319,27 @@ SAILib.finalizePrototype = function(proto) {
 // create
 //
 // Function called by compiled SAI to instantiate new SAI objects by name.
-// The following code is overridden when running SAI in on-the-fly mode.
+// The following code is overridden when running SAI in managed mode.
 //
 SAILib._protocache = {};
 SAILib.create = function(name,parameters) {
+//  console.log("trying to create a "+name);
   var proto=undefined;
   if (!(proto=this._protocache[name])) {
-    proto=this._protocache[name]=require(name);
+    var fn=name+".js";
+    var src=FS.readFileSync(fn,"utf8");
+    src='(function(exports, require, module, __filename, __dirname) {'+src+'});';
+    var mod=eval(src);
+    var proto=mod({},require,{},fn,__dirname);
+    this._protocache[name]=proto;
   }
   if (!proto) throw new Error('SAI.Create: Do not know how to create SAI object "'+name+'".');
   var obj=Object.create(proto); 
   if (obj.Constructor) obj.Constructor();
-  if (obj.Instantiate) obj.Instantiate.apply(obj,parameters);
+  if (obj.Instantiate) {
+//    console.log("Instantiating "+name);
+    obj.Instantiate.apply(obj,parameters);
+  }
   return obj;
 }
 
