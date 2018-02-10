@@ -6,6 +6,9 @@ var FS = require('fs');
 //
 // SAI Runtime Library
 //
+// original native Javascript version
+// no longer maintained
+//
 
 var SAILib = exports = {}
 try { module.exports=SAILib; } catch(e) {}
@@ -107,7 +110,7 @@ SAILib.assert=function(test,msg) {
 //
 // where do we send debug messages?
 //
-SAILib.debug_=function(o) {
+SAILib.debugFunction=function(o) {
   console.log(o);
 }
 
@@ -115,20 +118,20 @@ SAILib.debug_=function(o) {
 //
 // display debug information
 //
-SAILib.debug=function(o) {
+SAILib.debug_op=function(o) {
   try {
     if (o===undefined) {
-      SAILib.debug_("undefined");
+      SAILib.debugFunction("undefined");
     } else if (typeof o === 'function') {
-      SAILib.debug_("{function}");
+      SAILib.debugFunction("{function}");
     } else if (typeof o.next === 'function') {
-      SAILib.debug_("{likely iterator via .next}");
+      SAILib.debugFunction("{likely iterator via .next}");
     } else {
-      SAILib.debug_(o);
+      SAILib.debugFunction(o);
     }
   } catch (e) {
-    SAILib.debug_(`SAILib.debug exception: ${e.message}`);
-    SAILib.debug_(o);
+    SAILib.debugFunction(`SAILib.debug exception: ${e.message}`);
+    SAILib.debugFunction(o);
   }
 }
 
@@ -138,7 +141,7 @@ SAILib.debug=function(o) {
 // Otherwise, attempt to invoke the generator to create an iteration
 // with blank parameters.
 //
-SAILib.iterator=function(i) { 
+SAILib.iterator_op=function(i) { 
   if (!i) {
     coverage(1,"iterator");
     return i;
@@ -188,13 +191,13 @@ SAILib.generator=function(i) {
 //
 // given an object, create and invoke an iterator for it.
 //
-SAILib.iterate=function(a) { // full coverage pass
+SAILib.iterate_op=function(a) { // full coverage pass
   if (a===undefined) { // coverage(1,"iterate"); // pass
     return undefined;
   }
   if (mustIterate(a)) {
     //coverage(2,"iterate");
-    return SAILib.iterator(a);
+    return SAILib.iterator_op(a);
   }
   if (a[Symbol.iterator]) { // coverage(3,"iterate"); // pass
     return a[Symbol.iterator](); 
@@ -215,7 +218,7 @@ SAILib.iterate=function(a) { // full coverage pass
 // return an iterator that echoes an iterator
 // but returns a row counter as well
 //
-SAILib._kviterate=function*(a) {
+SAILib.kviterateHelper=function*(a) {
   var i=0;
   for (var v of a) {
     yield [i++, v];
@@ -228,17 +231,17 @@ SAILib._kviterate=function*(a) {
 // for every available element, the iterater will return an array with key, value
 // This is used by EVERY
 //
-SAILib.kviterate=function(a) { // full coverage pass
+SAILib.kviterate_op=function(a) { // full coverage pass
   if (a===undefined) { //coverage(1,"kviterate"); // pass
     return function*(){}();
   }
   if (mustIterate(a)) {
     //coverage(2,"kviterate");
-    return SAILib._kviterate(SAILib.iterator(a));
+    return SAILib.kviterateHelper(SAILib.iterator_op(a));
   }
   if (a[Symbol.iterator]) { 
     //coverage(3,"kviterate"); // pass
-    return SAILib._kviterate(a[Symbol.iterator]()); 
+    return SAILib.kviterateHelper(a[Symbol.iterator]()); 
   }
   if (isArray(a)) { // this path will only be executed if Array doesn't have a built-in iterator
     //coverage(4,"kviterate");
@@ -267,7 +270,7 @@ SAILib.kviterate=function(a) { // full coverage pass
 //
 // given an iterator, create an array of all of its yielded values.
 //
-SAILib._collect=function(iterable) {
+SAILib.collectHelper=function(iterable) {
   var a=[]; 
   for (var val of iterable) a.push(val);
   return a;
@@ -277,7 +280,7 @@ SAILib._collect=function(iterable) {
 //
 // If an object must be iterated, return all of its yielded values.
 // Otherwise return it unchanged.
-SAILib.collect=function(a) { // full coverage pass
+SAILib.collect_op=function(a) { // full coverage pass
   if (a===undefined) { // coverage(1,"collect");
     return undefined;
   }
@@ -285,15 +288,15 @@ SAILib.collect=function(a) { // full coverage pass
     return a;
   }
   // coverage(3,"collect");
-  a=SAILib.iterator(a);
-  return SAILib._collect(a);
+  a=SAILib.iterator_op(a);
+  return SAILib.collectHelper(a);
 }
 
 // drain
 //
 // drain a generator, throwing values away
 //
-SAILib.drain=function(a) {
+SAILib.drain_op=function(a) {
   if (undefined===a) {
     return;
   }
@@ -307,15 +310,15 @@ SAILib.drain=function(a) {
 //
 // Given a value, force it into an array, then sort it.
 //
-SAILib.sort=function(a,f) { // full coverage pass
+SAILib.sort_op=function(a,f) { // full coverage pass
   if (isArray(a)) {  // coverage(1,"sort");
     return a.slice(0).sort(f);
   }
   if (mustIterate(a)) { // coverage(2,"sort");
-    return SAILib._collect(a).sort(f);
+    return SAILib.collectHelper(a).sort(f);
   }
   if (isObject(a)) { // coverage(3,"sort");
-    return SAILib.values(a).sort(f);
+    return SAILib.values_op(a).sort(f);
   }
   // coverage(4,"sort");
   return a;
@@ -332,7 +335,7 @@ SAILib.sort=function(a,f) { // full coverage pass
 // object -> [[key,value],[key,value],...]
 // iterator -> [yielded values]
 //
-SAILib.enlist=function(a) { // full coverage pass
+SAILib.enlist_op=function(a) { // full coverage pass
   if (a===undefined) { // coverage(1,"enlist");
     return undefined;
   }
@@ -361,7 +364,7 @@ SAILib.enlist=function(a) { // full coverage pass
 // object -> object
 // iterator -> {y0[0]:y0[1], y1[0]:y1[1], ...}
 //
-SAILib.entrait=function(a) { // full coverage pass
+SAILib.entrait_op=function(a) { // full coverage pass
   if (a===undefined) { // coverage(1,"entrait");
     return undefined;
   }
@@ -385,7 +388,7 @@ SAILib.entrait=function(a) { // full coverage pass
 // 
 // return the value of a function
 //
-SAILib.alter = function(a,f) { // test 'alter *'
+SAILib.alter_op = function(a,f) { // test 'alter *'
   // coverage(1,"alter"); pass
   return f(a);
 }
@@ -394,7 +397,7 @@ SAILib.alter = function(a,f) { // test 'alter *'
 //
 // execute a function, leaving the object unaltered
 //
-SAILib.observe = function(a,f) {
+SAILib.observe_op = function(a,f) {
   // coverage(1,"observe"); pass
   f(a); // test 'observe *'
   return a;
@@ -406,12 +409,12 @@ SAILib.observe = function(a,f) {
 // But DOES NOT produce the results or alter the original array
 // Returns the original array.
 //
-SAILib.audit = function(a,f) { // full coverage pass
+SAILib.audit_op = function(a,f) { // full coverage pass
   if (isArray(a)) { // coverage(1,"audit");
     var k=0,l=a.length;
     while (k<l) { f(a[k],k); k++; }
   } else if (mustIterate(a)) { // coverage(2,"audit");
-    a=SAILib.iterator(a);
+    a=SAILib.iterator_op(a);
     return function *(){
       var k=0;
       for (var val of a) { f(val,k++); yield val; }
@@ -448,7 +451,7 @@ SAILib.audit = function(a,f) { // full coverage pass
 //	undef concat {c:3, d:4} -> [{c:3, d:4}]
 //	undef concat [3, 4] -> [3, 4]
 //
-SAILib.concat = function(a,b,inplace) { // full coverage pass
+SAILib.concat_op = function(a,b,inplace) { // full coverage pass
   if (a===undefined) {
     if (b===undefined) { // coverage(1,"concat");
       return undefined;
@@ -511,7 +514,7 @@ SAILib.concat = function(a,b,inplace) { // full coverage pass
 // returning a new array/object/iterator with the product of that
 // repeatedly invoked function
 //
-SAILib.map = function(a,f) { // full coverage pass
+SAILib.map_op = function(a,f) { // full coverage pass
   if (a===undefined) { //coverage(1,"map");
     return undefined; // test 'map undef'
   }
@@ -525,7 +528,7 @@ SAILib.map = function(a,f) { // full coverage pass
     }
     return r;
   } else if (mustIterate(a)) { // coverage(3,"map"); // test 'map iterable'
-    a=SAILib.iterator(a);
+    a=SAILib.iterator_op(a);
     return function *(){
       var k=0;
       for (var val of a) yield f(val, k++);
@@ -547,7 +550,7 @@ SAILib.map = function(a,f) { // full coverage pass
 // and returns a new array/object/iterator with only the elements
 // the function returned "true" on.
 //
-SAILib.filter = function(a,f) { // full coverage pass
+SAILib.filter_op = function(a,f) { // full coverage pass
   if (a===undefined) { // coverage(1, "filter");
     return undefined; 
   }
@@ -559,7 +562,7 @@ SAILib.filter = function(a,f) { // full coverage pass
     }
     return r;
   } else if (mustIterate(a)) { // coverage(3,"filter"); // test 'filter iterator'
-    a=SAILib.iterator(a);
+    a=SAILib.iterator_op(a);
     return function *(){
       var k=0;
       for (var val of a) {
@@ -584,7 +587,7 @@ SAILib.filter = function(a,f) { // full coverage pass
 // invoke a function on every element of the provided array/object/iterator
 // and return the accumulator.
 //
-SAILib.reduce = function(a,f,accum) { // full coverage pass
+SAILib.reduce_op = function(a,f,accum) { // full coverage pass
   if (a===undefined) { // coverage(1,"reduce");
     return undefined; // test 'reduce undef'
   }
@@ -605,7 +608,7 @@ SAILib.reduce = function(a,f,accum) { // full coverage pass
     return accum;
   }
   if (mustIterate(a)) { // coverage(4,"reduce");
-    a=SAILib.iterator(a);
+    a=SAILib.iterator_op(a);
     return function*(){
       var step=a.next();
       if (step.done) { // coverage(5,"reduce");
@@ -644,7 +647,7 @@ SAILib.reduce = function(a,f,accum) { // full coverage pass
     return accum;
   } // coverage(11,"reduce");
   // simple value; wrap it in an array and try again, yay tail call
-  return SAILib.reduce([a],f,accum);
+  return SAILib.reduce_op([a],f,accum);
 }
 
 // slice
@@ -678,7 +681,7 @@ SAILib.reduce = function(a,f,accum) { // full coverage pass
 
 */
 
-SAILib.slice = function(a,start,count) { // full coverage pass
+SAILib.slice_op = function(a,start,count) { // full coverage pass
   //console.log(`slice ${start} ${count}`);
   if (a===undefined) { // coverage(1,"slice");
     return undefined; 
@@ -710,7 +713,7 @@ SAILib.slice = function(a,start,count) { // full coverage pass
     if (isArray(a)) { // coverage(8,"slice");
       return a.slice(0,count);
     } else { // coverage(9,"slice");
-      a=SAILib.iterator(a);
+      a=SAILib.iterator_op(a);
       return function*() {
         let v=a.next();
         while (count-- && !v.done) {
@@ -777,7 +780,7 @@ SAILib.slice = function(a,start,count) { // full coverage pass
     collect=-count;
     crop=-count;
   }
-  a=SAILib.iterator(a);
+  a=SAILib.iterator_op(a);
 
   //console.log(`skip ${skip} - crop ${crop} - collect ${collect} - limit ${limit}`);
   return function*(){
@@ -810,15 +813,15 @@ SAILib.slice = function(a,start,count) { // full coverage pass
 //
 // returns a single element from an array/iterator
 //
-SAILib.element = function(a,index) { // full coverage pass
+SAILib.element_op = function(a,index) { // full coverage pass
   if (a===undefined) { //coverage(4,"element"); 
     return undefined;
   }
   if (isArray(a)) { // coverage(1,"element");
     return a[index];
   } else if (mustIterate(a)) { // coverage(2,"element");
-    a=SAILib.iterator(a);
-    a=SAILib.slice(a,index,1);
+    a=SAILib.iterator_op(a);
+    a=SAILib.slice_op(a,index,1);
     var v=a.next();
     return v.value;
   }
@@ -832,7 +835,7 @@ SAILib.element = function(a,index) { // full coverage pass
 //
 // create a shallow copy of an array or object
 //
-SAILib.clone = function(a) { // full coverage pass
+SAILib.clone_op = function(a) { // full coverage pass
   if (isArray(a)) { // coverage(1,"clone");
     return a.slice(0);
   }
@@ -854,7 +857,7 @@ SAILib.clone = function(a) { // full coverage pass
 // [1, 2, 3] overlay [4, undefined, 6] -> [4, 2, 6]
 // {a:1, b:2} overlay {c:3, b:4, a:undefined} -> {a:1, b:4, c:3}
 //
-SAILib.overlay = function(l,r) {// full coverage pass
+SAILib.overlay_op = function(l,r) {// full coverage pass
   if (l===undefined) { // coverage(1,"overlay");
     l={};
   }
@@ -865,9 +868,9 @@ SAILib.overlay = function(l,r) {// full coverage pass
     throw new Error("SAI: Attempt to OVERLAY with something that's not a collection/iterable.");
   }
   if (!mustIterate(l)) { // left side static
-    l=SAILib.clone(l); // no in-place modification
+    l=SAILib.clone_op(l); // no in-place modification
     if (mustIterate(r)) { // coverage(4,"overlay");
-      r=SAILib.iterator(r);
+      r=SAILib.iterator_op(r);
       // right side iterator
       return function*(){
         var v=r.next();
@@ -888,10 +891,10 @@ SAILib.overlay = function(l,r) {// full coverage pass
     }
     return l;
   } else {
-    l=SAILib.iterator(l);
+    l=SAILib.iterator_op(l);
     // left side iterable
     if (mustIterate(r)) { // coverage(6,"overlay");
-      r=SAILib.iterator(r);
+      r=SAILib.iterator_op(r);
       // right side iterable
       return function*(){
         var vl=l.next(),vr=r.next();
@@ -904,7 +907,7 @@ SAILib.overlay = function(l,r) {// full coverage pass
     }
     // coverage(7,"overlay");
     // right side static
-    r=SAILib.clone(r); // in case it is changed
+    r=SAILib.clone_op(r); // in case it is changed
     return function*(){
       var i=0,v=l.next();
       while (!v.done) {
@@ -924,7 +927,7 @@ SAILib.overlay = function(l,r) {// full coverage pass
 // ['Apple', 'Banana', 'Cherry', 'Durian'] select [2, 0] -> ['Cherry', 'Apple']
 // {a:1, b:2, c:3, d:4} select ["a","c"] -> {a:1, c:3}
 //
-SAILib.select = function(src,keys) { // full coverage pass
+SAILib.select_op = function(src,keys) { // full coverage pass
   if (!isMergable(src)) { // coverage(1,"select");
     throw new Error("SAI: Left argument to SELECT must be list/traits/iterable.");
   }
@@ -941,8 +944,8 @@ SAILib.select = function(src,keys) { // full coverage pass
       for (var i in keys) result[j++]=src[keys[i]];
       return result;
     } else if (mustIterate(keys)) { // coverage(5,"select"); // test 'select list iterable' // console.log("path 2");
-      keys=SAILib.iterator(keys);
-      src=SAILib.clone(src);
+      keys=SAILib.iterator_op(keys);
+      src=SAILib.clone_op(src);
       return function*(){
         for (var i of keys) yield src[i];
       }();
@@ -952,9 +955,9 @@ SAILib.select = function(src,keys) { // full coverage pass
     for (var i in keys) result.push(src[i]);
     return result;
   } else if (mustIterate(src)) { // lhs iterator
-    src=SAILib.iterator(src);
+    src=SAILib.iterator_op(src);
     if (mustIterate(keys)) { // coverage(7,"select");// test 'select iterable iterable' // rhs iterator console.log("path 4");
-      keys=SAILib.iterator(keys);
+      keys=SAILib.iterator_op(keys);
       return function*(){
         var buf=[],len=0;
         for (v of keys) {
@@ -968,7 +971,7 @@ SAILib.select = function(src,keys) { // full coverage pass
       }();
     }
     if (isArray(keys)) { // coverage(8,"select"); // test 'select iterable list' // rhs list console.log("path 5");
-      keys=SAILib.clone(keys);
+      keys=SAILib.clone_op(keys);
       return function*(){
         var buf=[],len=0;
         for (var i in keys) {
@@ -983,15 +986,15 @@ SAILib.select = function(src,keys) { // full coverage pass
       }();
     } // test 'select iterable traits' // rhs traits console.log("path 6");
     // coverage(9,"select");
-    keys=SAILib.keys(keys).sort();
+    keys=SAILib.keys_op(keys).sort();
     return function*(){
       var i=0,j=0;
       for (var v of src) if (i++==keys[j]) { yield v; j++; if (j>=keys.length) break;}
     }();
   } // else lhs traits
   if (mustIterate(keys)) { // coverage(10,"select"); // test 'select traits iterable' // console.log("path 7");
-    keys=SAILib.iterator(keys);
-    src=SAILib.clone(src);
+    keys=SAILib.iterator_op(keys);
+    src=SAILib.clone_op(src);
     return function*(){
       for (var v of keys) {
         if (v!==undefined) yield src[v];
@@ -1018,7 +1021,7 @@ SAILib.select = function(src,keys) { // full coverage pass
 // [1, 2, 3] update [4, undefined, 6] -> [4, 2, 6]
 // {a:1, b:2} update {c:3, b:4, a:undefined} -> {a:1, b:4, c:3}
 // 
-SAILib.update = function(dest,keys) { // full coverage pass // ITERATORS ONLY ON RIGHT SIDE
+SAILib.update_op = function(dest,keys) { // full coverage pass // ITERATORS ONLY ON RIGHT SIDE
   if (dest===undefined) { // coverage(1,"update");
     dest={};
   }
@@ -1029,7 +1032,7 @@ SAILib.update = function(dest,keys) { // full coverage pass // ITERATORS ONLY ON
     throw new Error("Attempt to UPDATE from something that's not a list or traits.");
   }
   if (mustIterate(keys)) { // coverage(4,"update");
-    keys=SAILib.iterator(keys);
+    keys=SAILib.iterator_op(keys);
     var i=0;
     for (var v of keys) {
       if (v!==undefined) dest[i]=v;
@@ -1052,7 +1055,7 @@ SAILib.update = function(dest,keys) { // full coverage pass // ITERATORS ONLY ON
 // [a:1, b:2, c:3] delete ["a"] -> [b:2, c:3]
 // [a:1, b:2, c:3] delete {b:5} -> [a:1, c:3]
 //
-SAILib.delete = function(dest,keys) { // full coverage pass // ITERATORS ONLY ON RIGHT SIDE
+SAILib.delete_op = function(dest,keys) { // full coverage pass // ITERATORS ONLY ON RIGHT SIDE
   if (mustIterate(dest)) { // coverage(1,"delete");
     throw new Error("SAI: Attempt to DELETE from an iterator, which is not presently supported.")
   }
@@ -1068,7 +1071,7 @@ SAILib.delete = function(dest,keys) { // full coverage pass // ITERATORS ONLY ON
     } else if (isArray(keys)) { // coverage(5,"delete");
       for (var i in keys) { var v=keys[i]; if (v!==undefined) dest.splice(keys[i],1); }
     } else if (mustIterate(keys)) { // coverage(6,"delete");
-      keys=SAILib.iterator(keys);
+      keys=SAILib.iterator_op(keys);
       for (var v of keys) { if (v!==undefined) dest.splice(v,1); }
     } else if (isObject(keys)) { // coverage(7,"delete");
       for (var i in keys) dest.splice(i,1);
@@ -1081,7 +1084,7 @@ SAILib.delete = function(dest,keys) { // full coverage pass // ITERATORS ONLY ON
     } else if (isArray(keys)) { // coverage(9,"delete");
       for (var i in keys) { var v=keys[i]; if (v!==undefined) delete dest[keys[i]]; }
     } else if (mustIterate(keys)) { // coverage(10,"delete");
-      keys=SAILib.iterator(keys);
+      keys=SAILib.iterator_op(keys);
       for (var v of keys) { if (v!==undefined) delete dest[v]; }
     } else {
       if (isObject(keys)) { // coverage(11,"delete");
@@ -1114,7 +1117,7 @@ SAILib.deepFreeze = function(o) {
 //
 // return true if a XOR b
 //
-SAILib.xor = function(a,b) { // test 'xor'
+SAILib.xor_op = function(a,b) { // test 'xor'
   return a?(b?false:a):(b?b:false);
 }
 
@@ -1122,7 +1125,7 @@ SAILib.xor = function(a,b) { // test 'xor'
 //
 // return the lower value
 //
-SAILib.min = function(a,b) { // test 'min'
+SAILib.min_op = function(a,b) { // test 'min'
   return (a<b)?(a):(b);
 }
 
@@ -1130,7 +1133,7 @@ SAILib.min = function(a,b) { // test 'min'
 //
 // return the higher value
 //
-SAILib.max = function(a,b) { // test 'max'
+SAILib.max_op = function(a,b) { // test 'max'
   return (a>b)?(a):(b);
 }
 
@@ -1140,7 +1143,7 @@ SAILib.max = function(a,b) { // test 'max'
 // return 1 if a is greater than b
 // otherwise return 0
 //
-SAILib.compare = function(a,b) { 
+SAILib.compare_op = function(a,b) { 
   if (a<b) return -1;
   if (a>b) return 1;
   return 0;
@@ -1150,13 +1153,13 @@ SAILib.compare = function(a,b) {
 // 
 // return the keys (item identifiers) from an object in an array.
 //
-SAILib.keys = function(a) { // full coverage pass
+SAILib.keys_op = function(a) { // full coverage pass
   var result=[];
   if (isArray(a)) { // coverage(1,"keys"); // test 'keys list'
     var len=a.length;
     for (var i = 0; i<len; result.push(i++));
   } else if (mustIterate(a)) { // coverage(2,"keys");
-    a=SAILib.iterator(a);
+    a=SAILib.iterator_op(a);
     var i=0;
     for (var v of a) result.push(i++);
   } else if (isObject(a)) { // coverage(3,"keys");
@@ -1170,12 +1173,12 @@ SAILib.keys = function(a) { // full coverage pass
 //
 // return how many items are in a collection
 //
-SAILib.count = function(a) { // full coverage pass
+SAILib.count_op = function(a) { // full coverage pass
   var result=0;
   if (isArray(a)) { // coverage(1,"count");
     result=a.length;
   } else if (mustIterate(a)) { // coverage(2,"count");
-    a=SAILib.iterator(a);
+    a=SAILib.iterator_op(a);
     for (var v of a) result++;
   } else if (isObject(a)) { // coverage(3,"count");
     for (var i in a) result++;
@@ -1191,12 +1194,12 @@ SAILib.count = function(a) { // full coverage pass
 //
 // return a list of all of the item values in a collectios
 //
-SAILib.values = function(a) { // full coverage pass
+SAILib.values_op = function(a) { // full coverage pass
   var result=[];
   if (isArray(a)) { // coverage(1,"values"); // test 'values list'
-    return SAILib.clone(a);
+    return SAILib.clone_op(a);
   } else if (mustIterate(a)) { // coverage(2,"values");// test 'values iterable'
-    return SAILib.collect(a);
+    return SAILib.collect_op(a);
   } else if (isObject(a)) { // coverage(3,"values"); // test 'values traits'
     for (var i in a) if (a[i]!==undefined) result.push(a[i]);
   } else if (a !== undefined) { // coverage(4,"values"); // test 'values value'
@@ -1221,7 +1224,7 @@ SAILib.newerror = function(line,file,parameters) {
 //
 // convert a value into a number, or zero if that's not possible.
 //
-SAILib.number = function(x) {
+SAILib.number_op = function(x) {
   var n=parseFloat(x);
   return isNaN(n)?0:n;
 }
@@ -1230,7 +1233,7 @@ SAILib.number = function(x) {
 //
 // (see 20.Keywords.md for description of purpose)
 //
-SAILib.expects = function(params,prototype) {
+SAILib.expects_op = function(params,prototype) {
   var result=[];
   for (var j in prototype) {
     var type=prototype[j];
@@ -1271,7 +1274,7 @@ SAILib.expects = function(params,prototype) {
 // Verify parameters match a prototype, throwing an exception if they don't.
 //
 SAILib.expectsThrow = function(params,prototype,name) {
-  var x=SAILib.expects(params,prototype);
+  var x=SAILib.expects_op(params,prototype);
   if (!x.length) return;
   var err=[];
   for (var i in x) {
@@ -1322,7 +1325,7 @@ SAILib.finalizePrototype = function(proto) {
 // The following code is overridden when running SAI in managed mode.
 //
 SAILib._protocache = {};
-SAILib.create = function(name,parameters) {
+SAILib.create_op = function(name,parameters) {
 //  console.log("trying to create a "+name);
   var proto=undefined;
   if (!(proto=this._protocache[name])) {
@@ -1348,11 +1351,11 @@ SAILib.create = function(name,parameters) {
 // Function called by compiled SAI to instantiate singleton SAI objects by name.
 //
 SAILib._singletoncache = {};
-SAILib.singleton = function(name,parameters) {
+SAILib.singleton_op = function(name,parameters) {
   if (SAILib._singletoncache[name]) {
     return SAILib._singletoncache[name];
   }
-  return SAILib._singletoncache[name]=SAILib.create(name,parameters);
+  return SAILib._singletoncache[name]=SAILib.create_op(name,parameters);
 }
 
 // _prototype

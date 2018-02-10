@@ -1,0 +1,1200 @@
+reference:
+  FS from require 'fs'
+  G: ct 0
+  
+object SAILib singleton
+
+// instance (member) variables
+
+instance:
+
+  // change debugFunction to alter where strings from the "debug" verb go 
+  debugFunction ~console.log
+  
+  
+  // internal caches
+  _protocache blank
+  _singletoncache blank
+  _coveragecache blank
+
+
+// Instantiate
+//
+// called when the object is created. Nothing to do here.
+//
+
+Instantiate task
+  inc G.ct
+  if @serial_number
+    debug "re-Instantiating over ${@serial_number}"
+  set @serial_number G.ct
+//  debug "sai-lib serial ${@serial_number}"
+  set @create_op @create_op_base
+
+
+// canIterate (utility)
+//
+// returns true if the candidate seems to be a true iterator, or at least acts like one
+//
+
+canIterate task given i
+  unless i
+    return false
+  if i[~Symbol.iterator]
+    return true
+  if 'function' is typeof i
+    return true
+  if 'function' is typeof i.next
+    return true
+  return false
+
+
+// @mustIterate (utility)
+//
+// returns true if the candidate MUST be iterated
+//
+
+mustIterate task given i
+  unless i
+    return false
+  if 'function' is typeof i.next
+    return true
+  if 'function' is typeof i
+    return true
+  return false
+
+
+// @isObject (utility)
+//
+// returns true if an actual Javascript object
+//
+
+isObject task given i
+  if i is null
+    return false
+  if 'object' is typeof i
+    return true
+  return false
+
+
+// isArray (utility)
+//
+// returns true if an actual Javascript array
+//
+
+isArray task given i
+  return from ~Array.isArray i
+
+  
+// @isMergable (utility)
+//
+// returns true if it has items, attributes, or is an iterator
+//
+
+isMergable task given i
+  return @isArray(i) or @isObject(i) or @canIterate(i)
+
+
+// @isCollection (utility)
+//
+// returns true if an array or an object
+//
+
+isCollection task given i
+  return @isArray(i) or @isObject(i)
+
+
+// coverage housekeeping
+//
+//
+
+coverage task given test, description
+  with '${description} - ${test}'
+    unless @_coverageCache[it]
+      debug 'Covered ${it}'
+      set @_coverageCache[it] true
+
+
+// assert
+//
+// throw an error if the test is false
+//
+
+assert task as test, message
+  unless test
+    throw new Error 'SAI: failed assertion: ${msg default ''}'
+
+
+// debug
+//
+// display debug information
+//
+
+debug_op task as o
+  try
+    set o default 'undefined'
+    if 'function' is typeof o.next
+      set o '{possible iterator via .next}'
+    else if 'function' is typeof o
+      set o '{function}'
+    @debugFunction o
+  catch
+    @debugFunction "SAILib.debug exception: ${error.message}"
+    @debugFunction o
+
+
+// iterator
+//
+// If the object seems an iterator ALREADY under iteration, return it.
+// Otherwise, attempt to invoke the generator to create an iteration
+// with blank parameters.
+//
+
+iterator_op task given i
+  unless i
+    return i
+  if 'function' is typeof i.next
+    return i
+  if 'function' is typeof i
+    return from i
+  if i[~Symbol.iterator]
+    return from i[~Symbol.iterator]
+  return i
+
+
+// iterate
+//
+// given an object, create and invoke an iterator for it.
+//
+
+iterate_op task given a
+  if undefined is a
+    return a
+  if @mustIterate(a)
+    return from @iterator_op a 
+  if a[~Symbol.iterator]
+    return from a[~Symbol.iterator]
+  if @isArray(a)
+    return from process
+      ply a
+        yield it
+  if @isObject(a)
+    return from process
+      each a
+        yield: key, it
+  return from process
+    yield a
+
+
+// kviterate (key value iterate)
+//
+// given any object or value, create and invoke an iterator for it.
+// for every available element, the iterater will return an array with key, value
+// This is used by the keyword EVERY
+//
+
+kviterate_op task given a
+  unless a
+    return from process
+      nop
+  if @mustIterate(a)
+    return from process
+      iterate a
+        yield: key, it
+  if a[~Symbol.iterator]
+    return from process
+      iterate a
+        yield: key, it
+  if @isArray(a)
+    return from process
+      ply a
+        yield: key, it
+  if @isObject(a)
+    return from process
+      each a
+        yield: key, it
+  return from process
+    yield: 0, a
+
+
+// collect
+//
+// If an object must be iterated, return all of its yielded values.
+// Otherwise return it unchanged.
+//
+
+collect_op task given i
+  if undefined is i
+    return i
+  unless @mustIterate(i)
+    return i
+
+  set a empty
+  iterate i
+    a.push it
+  return a
+
+
+// drain
+//
+// drain a generator, throwing values away
+//
+
+drain_op task given i
+  if undefined is i
+    return i
+  unless @mustIterate(i)
+    return i
+  
+  iterate i 
+    nop
+
+
+// sort
+//
+// Given a value, force it into an array, then sort it.
+//
+
+sort_op task given a, fn
+  if @isArray(a)
+    return a.slice(0).sort(fn)
+  if @mustIterate(a)
+    return @collect_op(a).sort(fn)
+  if @isObject(a)
+    return @values_op(a).sort(fn)
+  return a
+
+
+// enlist
+//
+// Given any object, array, iterator or value, return an
+// array with all of its values.
+//
+// undefined -> undefined
+// value -> [value]
+// array -> array
+// object -> [[key,value],[key,value],...]
+// iterator -> [yielded values]
+//
+
+enlist_op task given a
+  if undefined is a .. return a
+  if @isArray(a) .. return a
+  
+  set out empty
+  if @mustIterate(a)
+    iterate a
+      out.push it
+  else if @isObject(a)
+    each a
+      out.push: key, it
+  else
+    out.push a
+  return out
+
+
+// entrait
+// 
+// given any object, array, iterator or value, return an
+// object with all of its values.
+//
+// undefined -> undefined
+// value -> {value: true}
+// array -> {[0][0]:[0][1], [1][0]:[1][1], ...}
+// object -> object
+// iterator -> {y0[0]:y0[1], y1[0]:y1[1], ...}
+//
+
+entrait_op task given a
+  if undefined is a .. return a
+  
+  set out empty
+  set assign to task given k, v
+    if (k isnt undefined) and (v isnt undefined)
+      set out[k] v
+      
+  if @mustIterate(a)
+    iterate a
+      assign .0, .1
+  else if @isArray(a)
+    ply a
+      assign .0, .1
+  else if @isObject(a)
+    return a
+  else
+    set out[a] true
+
+  return out
+
+
+// alter
+// 
+// return the value of a function
+//
+
+alter_op task as a, fn
+  return fn(a)
+
+
+// observe
+//
+// execute a function, leaving the object unaltered
+//
+
+observe_op task given a, fn
+  fn a
+  return a
+
+
+// audit
+//
+// Execute a function on every element of an array/list/generator
+// But DOES NOT produce the results or alter the original array
+// Returns the original array.
+//
+
+audit_op task given a, fn
+  if @isArray(a)
+    ply a
+      fn it, key
+  else if @mustIterate(a)
+    return from process
+      iterate a
+        fn it, key
+        yield it
+  else if @isObject(a)
+    each a
+      fn it, key
+  return a
+
+
+// concat
+//
+// Create an array by concatenating two arrays.
+// Forces things that are not arrays to be arrays.
+// Returns a new array, unless "inplace" is set, 
+// then will modify the first array inplace if possible.
+//
+//	[1, 2] concat [3, 4] -> [1, 2, 3, 4]
+//	[1, 2] concat [[3, 4], [5, 6]] -> [1, 2, [3, 4], [5, 6]]
+//	[1, 2] concat 3 -> [1, 2, 3]
+//	[1, 2] concat {c:3, d:4} -> [1, 2, {c:3, d:4}]
+//	[1, 2] concat undef -> [1, 2]
+//	1 concat [3, 4] -> [1, 3, 4]
+//	1 concat 3 -> [1, 3]
+//	1 concat {c:3, d:4} -> [1, {c:3, d:4}]
+//	1 concat undef -> [1]
+//	{a:1, b:2} concat [3, 4] -> [{a:1, b:2}, 3, 4]
+//	{a:1, b:2} concat 3 -> [{a:1, b:2}, 3]
+//	{a:1, b:2} concat {c:3, d:4} -> [{a:1, b:2}, {c:3, d:4}]
+//	{a:1, b:2} concat undef -> [{a:1, b:2}]
+//	undef concat undef -> undef
+//	undef concat 3 -> [3]
+//	undef concat {c:3, d:4} -> [{c:3, d:4}]
+//	undef concat [3, 4] -> [3, 4]
+//
+
+concat_op task given a, b, inplace
+
+  if undefined is a
+    if undefined is b .. return undefined
+    if @isArray(b) or @mustIterate(b) .. return b
+    return array b
+    
+  if undefined is b
+    if @isArray(a) or @mustIterate(a) .. return a
+    return array a
+  
+  if @mustIterate(a)
+    if @mustIterate(b)
+      return from process
+        iterate a .. yield it
+        iterate b .. yield it
+      
+    if @isArray(b)
+      set b copy b
+      return from process
+        iterate a .. yield it
+        ply b .. yield it
+    
+    return from process
+      iterate a .. yield it
+      yield b
+      
+  if not @isArray(a)
+    set a array a
+  else unless inplace
+    set a copy a
+    
+  if @mustIterate(b)
+    iterate b .. a.push it
+  else if @isArray(b)
+    set a a.concat(b) 
+  else
+    a.push b
+    
+  return a
+
+
+// map
+//
+// execute a function on every element of an array/object/iterator
+// returning a new array/object/iterator with the product of that
+// repeatedly invoked function
+//
+
+map_op task given a, fn
+  if undefined is a .. return a
+  
+  if @isArray(a)
+    set r empty
+    ply a .. set r[key] fn(it,key)
+    return r
+    
+  if @mustIterate(a)
+    return from process
+      iterate a .. yield fn(it,key)
+
+  if @isObject(a)
+    set r blank
+    each a .. set r[key] fn(it,key)
+    return r
+    
+  return fn(a,undefined)
+  
+
+// filter
+//
+// Evaluats a function on every element of an array/object/iterator
+// and returns a new array/object/iterator with only the elements
+// the function returned "true" on.
+//
+
+filter_op task given a, fn
+
+  if undefined is a .. return a
+  
+  if @isArray(a)
+    set r empty
+    ply a .. if fn(it,key) .. r.push it
+    return r
+
+  if @mustIterate(a)
+    return from process
+      iterate a .. if fn(it,key) .. yield it
+          
+  if @isObject(a)
+    set r blank
+    each a .. if fn(it,key) .. set r[key] it
+    return r
+       
+  return fn(a,undefined) ?? a :: undefined
+
+  
+// reduce
+//
+// With a starting value (accumulator) that persists through invocations,
+// invoke a function on every element of the provided array/object/iterator
+// and return the accumulator.
+//
+
+reduce_op task given a, fn, accum
+
+  if undefined is a .. return a
+  
+  if @isArray(a)
+    set l a.length
+    unless l .. return accum
+    set k 0
+    if undefined is accum
+      set accum a[k]
+      inc k
+    while k < l
+      set accum fn(accum,a[k],k)
+      inc k
+    return accum
+    
+  if @mustIterate(a)
+    return from process
+      set a a iterate // activate iterator if necessary
+      set step a.next()
+      unless step.done
+        set k 0
+        if undefined is accum
+          set accum step.value
+          set step a.next()
+          inc k
+        until step.done
+          set accum fn(accum, step.value, k)
+          set step a.next()
+          inc k
+      yield accum
+
+  if @isObject(a)
+    set init undefined is accum
+    each a
+      if init
+        set accum it
+        set init false
+      else
+        set accum fn(accum,it,key)
+        
+    return accum
+
+  // wrap in array and try again
+  return @reduce_op((array a), fn, accum)
+  
+
+// slice
+//
+// return a subset of elements of the given list/iterator
+//
+// Singletons are wrapped in an array first.
+//
+// rules
+//
+//  slice undef, -y     last y rows
+//  slice undef, 0      nothing
+//  slice undef, undef  everything
+//  slice undef, +y     first y rows
+//    
+//  slice -x, -y        everything except last y rows, starting x from end of list
+//  slice -x, 0         nothing
+//  slice -x, undef     last x rows
+//  slice -x, +y        y rows starting x from end of list
+//      
+//  slice 0, -y         everything except last y rows
+//  slice 0, 0          nothing
+//  slice 0, undef      everything
+//  slice 0, +y         first y rows
+// 
+//  slice +x, -y        everything except last y rows, starting at x
+//  slice +x, 0         nothing
+//  slice +x, undef     everything starting at x
+//  slice +x, +y        y rows starting at x
+
+slice_op task given a, st, ct
+  
+  if undefined is a .. return a
+  
+  // zero count 
+  if ct is 0                      // *, 0
+    if @mustIterate(a)
+      return process .. nop
+    else
+      return empty
+
+  // must be an array or an iterator 
+  unless @mustIterate(a) or @isArray(a)
+    set a array a
+    
+  // return everything            // u/0, u
+  if ct is undefined and (st is undefined or st is 0) 
+    if @isArray(a)
+      return copy a
+    else
+      return a
+
+  // return first ct rows         // u/0, +ct
+  if ct > 0 and (st is undefined or st is 0) // return first ct rows
+    if @isArray(a)
+      return a.slice(0,ct)
+    else
+      return from process
+        iterate a
+          if key < ct .. yield it
+          else .. break
+
+  if @isArray(a)
+    set len a.length
+    if undefined is st and ct<0     // u, -ct
+      return from a.slice len+ct, len
+    else if 0 is st and ct<0        // 0, -ct
+      return from a.slice 0, len+ct
+    else if st>0                    
+      if ct<0                       // +st, -ct
+        return from a.slice st, len+ct
+      else if ct>0                  // +st, +ct
+        return from a.slice st, st+ct
+      else                          // +st, u
+        return from a.slice st, len
+    else if st<0                
+      if ct<0                       // -st, -ct
+        return from a.slice len+st, len+ct
+      else if ct>0                  // -st, +ct
+        return from a.slice len+st, len+st+ct
+      else
+        return from a.slice len+st, len // -st, u
+    throw new ~Error 'Impossible code path in slice_op'
+  
+  // generator
+  set
+    skip 0 // items to skip
+    crop 0 // items to discard off end
+    size 0 // cache size
+    only undefined // stop after collecting this many
+    keep true
+   
+  if undefined is st and ct<0         // u, -
+    set keep false
+    set size to -ct
+  else if st<0                        // -, *
+    set keep false
+    set size (-st)
+    if ct<0                           // -, -
+      set crop to -ct
+    else if ct>0                      // -, +
+      set crop size-ct
+  else if st>0                        // +, *
+    set skip st
+    if ct<0                           // +, -
+      set size to -ct
+      set crop to -ct
+    else if ct>0                      // +, +
+      set only ct
+  else                                // 0, -
+    set size to -ct
+    set crop to -ct
+
+  set a self iterate
+  
+  return from process
+    set cache empty
+    set v a.next()
+    until skip <= 0 or v.done
+      dec skip
+      set v a.next()
+    until v.done
+      cache.push v.value
+      if cache.length > size
+        with cache.shift()
+          if keep
+            if only <= 0 .. return
+            dec only // this code relies on behaviour of "undefined"
+            yield it
+      set v a.next()
+    while cache.length > crop
+      yield cache.shift()
+      
+
+// element
+//
+// returns a single element from an array/iterator
+//
+
+element_op task given a, index
+  if undefined is a .. return a
+  if @isArray(a)
+    return a[index]
+  if @mustIterate(a)
+    return @slice_op(a,index,1).next().value
+  if index is 0 or index is -1
+    return a
+  return undefined
+
+
+// clone
+//
+// create a shallow copy of an array or object
+//
+
+clone_op task given a
+  if @isArray(a)
+    return a.slice(0)
+  if @isObject(a)
+    set b blank
+    each a
+      unless undefined is it
+        set b[key] it
+    return b
+  return a
+
+
+// overlay
+//
+// creates a new collection with the left collection overlaid by the right collection
+//
+// [1, 2, 3] overlay [4, undefined, 6] -> [4, 2, 6]
+// {a:1, b:2} overlay {c:3, b:4, a:undefined} -> {a:1, b:4, c:3}
+//
+
+overlay_op task given l, r
+  
+  if undefined is l
+    set l blank
+
+  if not @isMergable(l)
+    throw new ~Error "SAI: Attempt to OVERLAY onto something that's not a collection/iterable."
+  if not @isMergable(r)
+    throw new ~Error "SAI: Attempt to OVERLAY with something that's not a collection/iterable."
+  
+  unless @mustIterate(l)               
+    set l copy self
+    if @mustIterate(r)                   // left static, right iterate
+      return from process
+        set r self iterate
+        set v r.next()
+        ply l
+          unless v.done
+            yield v.value default it
+            set v r.next()
+          else
+            yield it
+
+    if @isObject(r)                     // left static, right object
+      each r 
+        if it isnt undefined
+          set l[key] it
+    else                                 // left static, right array
+      ply r 
+        if it isnt undefined
+          set l[key] it
+    return l
+    
+  set l self iterate                    
+  if @mustIterate(r)                     // left iterate, right iterate
+    set r self iterate
+    return from process
+      set vl l.next()
+      set vr r.next()
+      until vr.done
+        yield vr.value is undefined ?? vl.value :: vr.value
+        set vl l.next()
+        set vr r.next()
+      yielding l
+      
+  set r copy self                       // left iterate, right static
+  return from process
+    set i 0
+    set v l.next()
+    until v.done
+      yield r[i] is undefined ?? v.value :: r[i]
+      inc i
+      set v l.next()
+
+
+// select
+//
+// get only elements of src enumerated by keys
+//
+// ['Apple', 'Banana', 'Cherry', 'Durian'] select [2, 0] -> ['Cherry', 'Apple']
+// {a:1, b:2, c:3, d:4} select ["a","c"] -> {a:1, c:3}
+//
+
+select_op task given src, manifest
+  unless @isMergable(src)
+    throw new ~Error "SAI: Left argument to SELECT must be list/traits/iterable."
+
+  unless @isMergable(manifest)
+    if undefined is manifest .. return manifest
+    set manifest array manifest
+
+  if @isArray(src)
+    if @isArray(manifest)                      // array, array
+      set result empty
+      ply manifest
+        result.push src[it]
+      return result
+      
+    else if @mustIterate(manifest)             // array, iterator
+      set src copy src
+      return from process
+        iterate manifest
+          yield src[it]
+          
+    set result empty                      // array, traits
+    each manifest
+      result.push src[key]
+    return result
+    
+  else if @mustIterate(src)
+    if @mustIterate(manifest)                  // iterator, iterator
+      set src self iterate
+      return from process
+        set l src.next()
+        set buffer empty
+        iterate manifest
+          while not l.done and buffer.length <= it
+            buffer.push l.value
+            set l src.next()
+          yield buffer[it]
+
+    if @isArray(manifest)                      // iterator, array
+      set manifest copy manifest
+      set src self iterate
+      return from process
+        set l src.next()
+        set buffer empty
+        ply manifest
+          while not l.done and buffer.length <= it
+            buffer.push l.value
+            set l src.next()
+          yield buffer[it]
+        
+    set manifest (self keys thru number .) by asc             // iterator, traits
+    return from process
+      set i 0
+      iterate src
+        if key is manifest[i]
+          yield it
+          inc i
+          if i>=manifest.length .. return
+          
+  if @mustIterate(manifest)                    // traits, iterator
+    set src copy src
+    return from process
+      iterate manifest
+        if it isnt undefined
+          yield src[it]
+          
+  set result blank
+  if @isArray(manifest)                          // traits, array
+    ply manifest
+      set result[it] src[it]
+    return result
+  
+  if @isObject(manifest)                        // traits, traits
+    each manifest
+      set result[key] src[key]
+
+  else                                              // traits, value
+    set result[manifest] src[manifest]
+    
+  return result
+
+
+// update
+//
+// Updates a collection of traits in-place.
+//
+// [1, 2, 3] update [4, undefined, 6] -> [4, 2, 6]
+// {a:1, b:2} update {c:3, b:4, a:undefined} -> {a:1, b:4, c:3}
+// 
+
+update_op task as dest, manifest
+  if undefined is dest
+    set dest blank
+    
+  unless @isArray(dest) or @isObject(dest)
+    throw new ~Error "Attempt to UPDATE into something that's not a list or traits."
+
+  unless @isMergable(manifest)
+    throw new ~Error "Attempt to UPDATE from something that's not a list or traits."
+
+  if @mustIterate(manifest)
+    iterate manifest
+      if it isnt undefined .. set dest[key] it
+
+  else if @isArray(manifest)
+    ply manifest
+      if it isnt undefined .. set dest[key] it
+
+  else
+    each manifest
+      if it isnt undefined .. set dest[key] it
+
+  return dest
+
+
+// delete
+//
+// Delete, in place, specific items from a collectios
+//
+// [1, 2, 3, 4] delete [1, 2] -> [1, 3]
+// [a:1, b:2, c:3] delete ["a"] -> [b:2, c:3]
+// [a:1, b:2, c:3] delete {b:5} -> [a:1, c:3]
+//
+
+delete_op task as dest, manifest
+  if @mustIterate(dest)
+    throw new ~Error "SAI: Attempt to DELETE from an iterator, which is not presently supported."
+  unless @isObject(dest)
+    throw new ~Error "SAI: Attempt to DELETE from something that's not a list or traits."
+  set
+    splicer task given index
+      unless index is undefined
+        dest.splice index,1
+    deleter task given ignore, index
+      unless index is undefined
+        delete dest[index]
+    deletel task given index, ignore
+      unless index is undefined
+        delete dest[index]
+      
+  if @isArray(dest)
+    unless @isMergable(manifest)
+      splicer manifest
+    else if @isArray(manifest)
+      ply manifest using splicer
+    else if @mustIterate(manifest)
+      iterate manifest using splicer
+    else
+      each manifest 
+        local index ~parseInt(key)
+        unless isNaN index
+          dest.splice index,1
+
+  else // it's not an array
+    unless @isMergable(manifest)
+      delete dest[manifest]
+    else if @isArray(manifest)
+      ply manifest using deletel
+    else if @mustIterate(manifest)
+      iterate manifest using deletel
+    else if @isObject(manifest)
+      each manifest using deleter
+    else
+      delete dest[manifest]
+      
+  return dest
+
+
+// deepFreeze
+//
+// Freeze an object and all of its properties (ensure they cannot be changed)
+//
+
+deepFreeze task given o
+  ~Object.freeze o
+  each o
+    if not o.hasOwnProperty(key) .. continue
+    if 'object' isnt typeof it .. continue
+    if ~Object.isFrozen(it) .. continue
+    @deepFreeze it
+
+
+// xor
+//
+// return true if a XOR b
+//
+//
+
+xor_op task given a, b
+  return a ?? (b??false::a) :: (b??b::false)
+
+
+// min
+//
+// return the lower value
+//
+
+min_op task given a, b
+  return (a<b) ?? a :: b
+
+
+// max
+//
+// return the higher value
+//
+
+max_op task given a, b
+  return (a>b) ?? a :: b
+
+
+// compare
+//
+// return -1 if a is less than b
+// return 1 if a is greater than b
+// otherwise return 0
+//
+
+compare_op task given a, b
+  if a<b .. return -1
+  if a>b .. return 1
+  return 0
+
+
+// keys
+// 
+// return the keys (item identifiers) from an object in an array.
+//
+
+keys_op task given a
+  set result empty
+  if @isArray(a)
+    count a.length
+      result.push counter
+  else if @mustIterate(a)
+    iterate a
+      result.push key
+  else if @isObject(a)
+    each a
+      result.push key
+  return result
+  
+  
+// count
+//
+// return how many items are in a collection
+//
+
+count_op task given a
+  if @isArray(a)
+    return a.length
+  set i 0
+  if @mustIterate(a)
+    iterate a
+      inc i
+    return i
+  if @isObject(a)
+    each a
+      inc i
+    return i
+  if a is undefined
+    return 0
+  return 1
+
+
+// values
+//
+// return a list of all of the item values in a collectios
+//
+
+values_op task given a
+  if @isArray(a)
+    return copy a
+  if @mustIterate(a)
+    return @collect_op(a)
+  set result empty
+  if @isObject(a)
+    each a
+      result.push it
+    return result
+  if undefined isnt a
+    result.push a
+  return result
+
+
+// newerror
+//
+// prepare an error object for throwing
+//
+
+newerror task given line, file, parameters
+  set e new ~Error parameters.message, file, line
+  each parameters
+    set e[key] to it
+  return e
+
+
+// number
+//
+// convert a value into a number, or zero if that's not possible.
+//
+
+number_op task given x
+  set n ~parseFloat(x)
+  return (isNaN n) ?? 0 :: n
+
+
+// expects
+//
+// (see 20.Keywords.md for description of purpose)
+//
+
+expects_op task given params, prototype
+  set result empty
+
+  set tester task given param, name, type
+    if type is typeof param
+      nop // good
+    else if param.isof and param.isof[type]
+      nop // good
+    else  // bad
+      if p.isa
+        result.push: trait name, 'expects' type, found param.isa
+      else
+        result.push: trait name, 'expects' type, found typeof param
+  
+  each prototype as type
+    if key is '_root'
+      tester params, 'Root', type
+    else unless params[key]
+      result.push: trait key, 'expects' type, found 'undefined'
+    else if type isnt true
+      tester params[key], key, type
+
+  return result
+
+
+// expectsThrow
+//
+// Verify parameters match a prototype, throwing an exception if they don't.
+//
+
+expectsThrow task given params, prototype, name
+  set x @expects_op(params,prototype)
+  unless x.length .. return
+  set err empty
+  each x
+    err.push '${it.trait} should be ${it.expects} but is instead ${it.found}'
+  throw new ~Error 'SAI: parameter exception in ${name}\n${err.join('\n')}'
+
+
+// FinalizePrototype
+//
+// Lock and freeze prototype attributes as needed.
+// Verify contracts are fulfilled
+// Bind and build an instantiation function.
+//
+
+finalizePrototype task given proto
+  
+  each proto.__tobelocked
+    ~Object.defineProperty proto, it, :configurable false
+  delete proto.__tobelocked
+  
+  each proto.__tobefrozen
+    @deepFreeze proto[it]
+  delete proto.__tobefrozen
+  
+  if proto.__unverified
+    each proto.__contracts
+      if undefined is proto[it]
+        throw new ~Error "SAI: Contractually required trait ${it} does not exist in object ${proto.isa}."
+    delete proto.__unverified
+    delete proto.__contracts
+
+  set proto.constructor task
+    set obj ~Object.create(proto)
+    if obj.Constructor .. obj.Constructor
+    if obj.Instantiate .. obj.Instantiate.apply obj, ~arguments
+    return obj
+
+
+// create_op_base
+//
+// Function called by compiled SAI to instantiate new SAI objects by name.
+// The following code is overridden when running SAI in managed mode.
+//
+
+create_op_base task given name, parameters
+  set proto @_protocache[name]
+  unless proto
+    set 
+      fn name + '.js'
+      src FS.readFileSync(fn,'utf8')
+      src '(function(exports, require, module, __filename, __dirname) {${src}});'
+      mod ~eval(src)
+      proto mod(blank,~require,blank,fn,~__dirname)
+      @_protocache[name] proto
+
+  unless proto
+    throw new ~Error 'SAI.Create: Do not know how to create SAI object ${name}.';
+
+  set obj ~Object.create(proto)
+  if obj.Constructor .. obj.Constructor
+  if obj.Instantiate .. obj.Instantiate.apply obj, parameters
+  return obj
+
+
+// singleton
+//
+// Function called by compiled SAI to instantiate singleton SAI objects by name.
+//
+
+singleton_op task given name, parameters
+  set @_singletoncache[name] default from @create_op name, parameters
+  return @_singletoncache[name]
+
+

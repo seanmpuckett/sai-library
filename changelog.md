@@ -1,5 +1,12 @@
 ## Changelog
 
+### 1.0.7
+
+ - sailib is now written in the language it supports. 
+- change to `select` now returning `undefined` values when trying to select beyond the end of an iterator rather than bailing on the selection.
+- src and lib directory structure
+
+
 ### 1.0.6
 
  - changes to `create` to fix issues with compiled projects
