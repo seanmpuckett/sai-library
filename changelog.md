@@ -1,5 +1,11 @@
 ## Changelog
 
+### 1.0.8
+
+ - fixed problem with `expects`
+ - slice a.k.a. `limit` now operates on characters in strings as well as arrays, and generators.
+ 
+
 ### 1.0.7
 
  - sailib is now written in the language it supports. 

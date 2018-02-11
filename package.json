@@ -1,10 +1,10 @@
 {
   "name": "sai-library",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Runtime library for sai-language compiled scripts.",
   "main": "lib/sailib.js",
   "scripts": {
-    "prepublish": "sai-build -o lib src/sailib",
+    "prepare": "sai-build -o lib src/sailib",
     "test": "echo \"Test suite is integrated with sai-language.\" && exit 0"
   },
   "repository": {

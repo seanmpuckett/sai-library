@@ -86,6 +86,15 @@ isArray task given i
   return from ~Array.isArray i
 
   
+// isString (utility)
+//
+// returns true if a String object
+//
+
+isString task given i
+  return 'string' is typeof i
+
+  
 // @isMergable (utility)
 //
 // returns true if it has items, attributes, or is an iterator
@@ -577,6 +586,34 @@ slice_op task given a, st, ct
   
   if undefined is a .. return a
   
+  if @isString(a)
+    if ct is 0
+      return ''
+    if ct is undefined and (st is undefined or st is 0)
+      return a
+    if ct > 0 and (st is undefined or st is 0)
+      return a.substring(0, ct)
+    set len a.length
+    if undefined is st and ct<0     // u, -ct
+      return from a.substring len+ct, len
+    else if 0 is st and ct<0        // 0, -ct
+      return from a.substring 0, len+ct
+    else if st>0                    
+      if ct<0                       // +st, -ct
+        return from a.substring st, len+ct
+      else if ct>0                  // +st, +ct
+        return from a.substring st, st+ct
+      else                          // +st, u
+        return from a.substring st, len
+    else if st<0                
+      if ct<0                       // -st, -ct
+        return from a.substring len+st, len+ct
+      else if ct>0                  // -st, +ct
+        return from a.substring len+st, len+st+ct
+      else
+        return from a.substring len+st, len // -st, u
+    throw new ~Error 'Impossible code path 2 in slice_op'
+  
   // zero count 
   if ct is 0                      // *, 0
     if @mustIterate(a)
@@ -585,7 +622,7 @@ slice_op task given a, st, ct
       return empty
 
   // must be an array or an iterator 
-  unless @mustIterate(a) or @isArray(a)
+  unless @mustIterate(a) or @isArray(a) 
     set a array a
     
   // return everything            // u/0, u
@@ -1101,7 +1138,7 @@ expects_op task given params, prototype
     else if param.isof and param.isof[type]
       nop // good
     else  // bad
-      if p.isa
+      if param.isa
         result.push: trait name, 'expects' type, found param.isa
       else
         result.push: trait name, 'expects' type, found typeof param
