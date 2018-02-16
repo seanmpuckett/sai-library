@@ -1,6 +1,6 @@
 reference:
   FS from require 'fs'
-  G: ct 0
+  GLOBAL: instance 0
   
 object SAILib singleton
 
@@ -24,11 +24,11 @@ instance:
 //
 
 Instantiate task
-  inc G.ct
   if @serial_number
     debug "re-Instantiating over ${@serial_number}"
-  set @serial_number G.ct
-//  debug "sai-lib serial ${@serial_number}"
+  inc GLOBAL.instance
+  set @serial_number GLOBAL.instance
+
   set @create_op @create_op_base
 
 
@@ -131,7 +131,7 @@ coverage task given test, description
 
 assert task as test, message
   unless test
-    throw new Error 'SAI: failed assertion: ${msg default ''}'
+    throw new ~Error 'SAI: failed assertion: ${message default ""}'
 
 
 // debug
@@ -612,7 +612,7 @@ slice_op task given a, st, ct
         return from a.substring len+st, len+st+ct
       else
         return from a.substring len+st, len // -st, u
-    throw new ~Error 'Impossible code path 2 in slice_op'
+    throw new ~Error 'SAI: Bad parameters in call to LIMIT/slice'
   
   // zero count 
   if ct is 0                      // *, 0
@@ -662,7 +662,7 @@ slice_op task given a, st, ct
         return from a.slice len+st, len+st+ct
       else
         return from a.slice len+st, len // -st, u
-    throw new ~Error 'Impossible code path in slice_op'
+    throw new ~Error 'SAI: Bad parameters in call to LIMIT/slice'
   
   // generator
   set

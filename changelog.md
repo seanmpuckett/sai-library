@@ -1,5 +1,11 @@
 ## Changelog
 
+### 1.0.9
+
+ - enhanced error checking in `slice_op`
+ - cleaned up some undefined variables
+ 
+
 ### 1.0.8
 
  - fixed problem with `expects`
