@@ -1208,13 +1208,14 @@ finalizePrototype task given proto
 create_op_base task given name, parameters
   set proto @_protocache[name]
   unless proto
-    set 
-      fn name + '.js'
-      src FS.readFileSync(fn,'utf8')
-      src '(function(exports, require, module, __filename, __dirname) {${src}});'
-      mod ~eval(src)
-      proto mod(blank,~require,blank,fn,~__dirname)
-      @_protocache[name] proto
+    set fn name + '.js'
+    set src FS.readFileSync(fn,'utf8')
+    if '#!' is src limit 0, 2 
+      set src replace'd self /\#\![^\r\n\u0085\u2028\u2029]+/, ''
+    set src '(function(exports, require, module, __filename, __dirname) {${src}});'
+    set mod from ~eval src
+    set proto from mod blank, ~require, blank, fn, ~__dirname
+    set my _protocache[name] proto
 
   unless proto
     throw new ~Error 'SAI.Create: Do not know how to create SAI object ${name}.';

@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.0.10
+
+ - Javascript based loader now strips out `#!` from "created" objects to avoid compile errors.
+ 
+
 ### 1.0.9
 
  - enhanced error checking in `slice_op`
