@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.0.11
+
+ - Using hasOwnProperty to test for contract fulfillment
+
+
 ### 1.0.10
 
  - Javascript based loader now strips out `#!` from "created" objects to avoid compile errors.

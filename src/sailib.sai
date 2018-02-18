@@ -16,20 +16,22 @@ instance:
   _protocache blank
   _singletoncache blank
   _coveragecache blank
-
-
+  
+  serial_number undefined
+  create_op undefined
+  
 // Instantiate
 //
 // called when the object is created. Nothing to do here.
 //
 
 Instantiate task
-  if @serial_number
+  if serial_number
     debug "re-Instantiating over ${@serial_number}"
   inc GLOBAL.instance
-  set @serial_number GLOBAL.instance
+  set serial_number GLOBAL.instance
 
-  set @create_op @create_op_base
+  set create_op create_op_base
 
 
 // canIterate (utility)
@@ -1187,7 +1189,7 @@ finalizePrototype task given proto
   
   if proto.__unverified
     each proto.__contracts
-      if undefined is proto[it]
+      unless hasOwnProperty'd proto it
         throw new ~Error "SAI: Contractually required trait ${it} does not exist in object ${proto.isa}."
     delete proto.__unverified
     delete proto.__contracts
