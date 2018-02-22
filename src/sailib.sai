@@ -27,7 +27,7 @@ instance:
 
 Instantiate task
   if serial_number
-    debug "re-Instantiating over ${@serial_number}"
+    debug "re-Instantiating over ${serial_number}"
   inc GLOBAL.instance
   set serial_number GLOBAL.instance
 
@@ -51,7 +51,7 @@ canIterate task given i
   return false
 
 
-// @mustIterate (utility)
+// mustIterate (utility)
 //
 // returns true if the candidate MUST be iterated
 //
@@ -66,7 +66,7 @@ mustIterate task given i
   return false
 
 
-// @isObject (utility)
+// isObject (utility)
 //
 // returns true if an actual Javascript object
 //
@@ -97,22 +97,22 @@ isString task given i
   return 'string' is typeof i
 
   
-// @isMergable (utility)
+// isMergable (utility)
 //
 // returns true if it has items, attributes, or is an iterator
 //
 
 isMergable task given i
-  return @isArray(i) or @isObject(i) or @canIterate(i)
+  return isArray(i) or isObject(i) or canIterate(i)
 
 
-// @isCollection (utility)
+// isCollection (utility)
 //
 // returns true if an array or an object
 //
 
 isCollection task given i
-  return @isArray(i) or @isObject(i)
+  return isArray(i) or isObject(i)
 
 
 // coverage housekeeping
@@ -121,9 +121,9 @@ isCollection task given i
 
 coverage task given test, description
   with '${description} - ${test}'
-    unless @_coverageCache[it]
+    unless _coveragecache[it]
       debug 'Covered ${it}'
-      set @_coverageCache[it] true
+      set _coveragecache[it] true
 
 
 // assert
@@ -148,10 +148,10 @@ debug_op task as o
       set o '{possible iterator via .next}'
     else if 'function' is typeof o
       set o '{function}'
-    @debugFunction o
+    debugFunction o
   catch
-    @debugFunction "SAILib.debug exception: ${error.message}"
-    @debugFunction o
+    debugFunction "SAILib.debug exception: ${error.message}"
+    debugFunction o
 
 
 // iterator
@@ -181,15 +181,15 @@ iterator_op task given i
 iterate_op task given a
   if undefined is a
     return a
-  if @mustIterate(a)
-    return from @iterator_op a 
+  if mustIterate(a)
+    return from iterator_op a 
   if a[~Symbol.iterator]
     return from a[~Symbol.iterator]
-  if @isArray(a)
+  if isArray(a)
     return from process
       ply a
         yield it
-  if @isObject(a)
+  if isObject(a)
     return from process
       each a
         yield: key, it
@@ -208,7 +208,7 @@ kviterate_op task given a
   unless a
     return from process
       nop
-  if @mustIterate(a)
+  if mustIterate(a)
     return from process
       iterate a
         yield: key, it
@@ -216,11 +216,11 @@ kviterate_op task given a
     return from process
       iterate a
         yield: key, it
-  if @isArray(a)
+  if isArray(a)
     return from process
       ply a
         yield: key, it
-  if @isObject(a)
+  if isObject(a)
     return from process
       each a
         yield: key, it
@@ -237,7 +237,7 @@ kviterate_op task given a
 collect_op task given i
   if undefined is i
     return i
-  unless @mustIterate(i)
+  unless mustIterate(i)
     return i
 
   set a empty
@@ -254,7 +254,7 @@ collect_op task given i
 drain_op task given i
   if undefined is i
     return i
-  unless @mustIterate(i)
+  unless mustIterate(i)
     return i
   
   iterate i 
@@ -267,12 +267,12 @@ drain_op task given i
 //
 
 sort_op task given a, fn
-  if @isArray(a)
+  if isArray(a)
     return a.slice(0).sort(fn)
-  if @mustIterate(a)
-    return @collect_op(a).sort(fn)
-  if @isObject(a)
-    return @values_op(a).sort(fn)
+  if mustIterate(a)
+    return collect_op(a).sort(fn)
+  if isObject(a)
+    return values_op(a).sort(fn)
   return a
 
 
@@ -290,13 +290,13 @@ sort_op task given a, fn
 
 enlist_op task given a
   if undefined is a .. return a
-  if @isArray(a) .. return a
+  if isArray(a) .. return a
   
   set out empty
-  if @mustIterate(a)
+  if mustIterate(a)
     iterate a
       out.push it
-  else if @isObject(a)
+  else if isObject(a)
     each a
       out.push: key, it
   else
@@ -324,13 +324,13 @@ entrait_op task given a
     if (k isnt undefined) and (v isnt undefined)
       set out[k] v
       
-  if @mustIterate(a)
+  if mustIterate(a)
     iterate a
       assign .0, .1
-  else if @isArray(a)
+  else if isArray(a)
     ply a
       assign .0, .1
-  else if @isObject(a)
+  else if isObject(a)
     return a
   else
     set out[a] true
@@ -365,15 +365,15 @@ observe_op task given a, fn
 //
 
 audit_op task given a, fn
-  if @isArray(a)
+  if isArray(a)
     ply a
       fn it, key
-  else if @mustIterate(a)
+  else if mustIterate(a)
     return from process
       iterate a
         fn it, key
         yield it
-  else if @isObject(a)
+  else if isObject(a)
     each a
       fn it, key
   return a
@@ -409,20 +409,20 @@ concat_op task given a, b, inplace
 
   if undefined is a
     if undefined is b .. return undefined
-    if @isArray(b) or @mustIterate(b) .. return b
+    if isArray(b) or mustIterate(b) .. return b
     return array b
     
   if undefined is b
-    if @isArray(a) or @mustIterate(a) .. return a
+    if isArray(a) or mustIterate(a) .. return a
     return array a
   
-  if @mustIterate(a)
-    if @mustIterate(b)
+  if mustIterate(a)
+    if mustIterate(b)
       return from process
         iterate a .. yield it
         iterate b .. yield it
       
-    if @isArray(b)
+    if isArray(b)
       set b copy b
       return from process
         iterate a .. yield it
@@ -432,14 +432,14 @@ concat_op task given a, b, inplace
       iterate a .. yield it
       yield b
       
-  if not @isArray(a)
+  if not isArray(a)
     set a array a
   else unless inplace
     set a copy a
     
-  if @mustIterate(b)
+  if mustIterate(b)
     iterate b .. a.push it
-  else if @isArray(b)
+  else if isArray(b)
     set a a.concat(b) 
   else
     a.push b
@@ -457,16 +457,16 @@ concat_op task given a, b, inplace
 map_op task given a, fn
   if undefined is a .. return a
   
-  if @isArray(a)
+  if isArray(a)
     set r empty
     ply a .. set r[key] fn(it,key)
     return r
     
-  if @mustIterate(a)
+  if mustIterate(a)
     return from process
       iterate a .. yield fn(it,key)
 
-  if @isObject(a)
+  if isObject(a)
     set r blank
     each a .. set r[key] fn(it,key)
     return r
@@ -485,16 +485,16 @@ filter_op task given a, fn
 
   if undefined is a .. return a
   
-  if @isArray(a)
+  if isArray(a)
     set r empty
     ply a .. if fn(it,key) .. r.push it
     return r
 
-  if @mustIterate(a)
+  if mustIterate(a)
     return from process
       iterate a .. if fn(it,key) .. yield it
           
-  if @isObject(a)
+  if isObject(a)
     set r blank
     each a .. if fn(it,key) .. set r[key] it
     return r
@@ -513,7 +513,7 @@ reduce_op task given a, fn, accum
 
   if undefined is a .. return a
   
-  if @isArray(a)
+  if isArray(a)
     set l a.length
     unless l .. return accum
     set k 0
@@ -525,7 +525,7 @@ reduce_op task given a, fn, accum
       inc k
     return accum
     
-  if @mustIterate(a)
+  if mustIterate(a)
     return from process
       set a a iterate // activate iterator if necessary
       set step a.next()
@@ -541,7 +541,7 @@ reduce_op task given a, fn, accum
           inc k
       yield accum
 
-  if @isObject(a)
+  if isObject(a)
     set init undefined is accum
     each a
       if init
@@ -553,7 +553,7 @@ reduce_op task given a, fn, accum
     return accum
 
   // wrap in array and try again
-  return @reduce_op((array a), fn, accum)
+  return reduce_op((array a), fn, accum)
   
 
 // slice
@@ -588,7 +588,7 @@ slice_op task given a, st, ct
   
   if undefined is a .. return a
   
-  if @isString(a)
+  if isString(a)
     if ct is 0
       return ''
     if ct is undefined and (st is undefined or st is 0)
@@ -618,25 +618,25 @@ slice_op task given a, st, ct
   
   // zero count 
   if ct is 0                      // *, 0
-    if @mustIterate(a)
+    if mustIterate(a)
       return process .. nop
     else
       return empty
 
   // must be an array or an iterator 
-  unless @mustIterate(a) or @isArray(a) 
+  unless mustIterate(a) or isArray(a) 
     set a array a
     
   // return everything            // u/0, u
   if ct is undefined and (st is undefined or st is 0) 
-    if @isArray(a)
+    if isArray(a)
       return copy a
     else
       return a
 
   // return first ct rows         // u/0, +ct
   if ct > 0 and (st is undefined or st is 0) // return first ct rows
-    if @isArray(a)
+    if isArray(a)
       return a.slice(0,ct)
     else
       return from process
@@ -644,7 +644,7 @@ slice_op task given a, st, ct
           if key < ct .. yield it
           else .. break
 
-  if @isArray(a)
+  if isArray(a)
     set len a.length
     if undefined is st and ct<0     // u, -ct
       return from a.slice len+ct, len
@@ -723,10 +723,10 @@ slice_op task given a, st, ct
 
 element_op task given a, index
   if undefined is a .. return a
-  if @isArray(a)
+  if isArray(a)
     return a[index]
-  if @mustIterate(a)
-    return @slice_op(a,index,1).next().value
+  if mustIterate(a)
+    return slice_op(a,index,1).next().value
   if index is 0 or index is -1
     return a
   return undefined
@@ -738,9 +738,9 @@ element_op task given a, index
 //
 
 clone_op task given a
-  if @isArray(a)
+  if isArray(a)
     return a.slice(0)
-  if @isObject(a)
+  if isObject(a)
     set b blank
     each a
       unless undefined is it
@@ -762,14 +762,14 @@ overlay_op task given l, r
   if undefined is l
     set l blank
 
-  if not @isMergable(l)
+  if not isMergable(l)
     throw new ~Error "SAI: Attempt to OVERLAY onto something that's not a collection/iterable."
-  if not @isMergable(r)
+  if not isMergable(r)
     throw new ~Error "SAI: Attempt to OVERLAY with something that's not a collection/iterable."
   
-  unless @mustIterate(l)               
+  unless mustIterate(l)               
     set l copy self
-    if @mustIterate(r)                   // left static, right iterate
+    if mustIterate(r)                   // left static, right iterate
       return from process
         set r self iterate
         set v r.next()
@@ -780,7 +780,7 @@ overlay_op task given l, r
           else
             yield it
 
-    if @isObject(r)                     // left static, right object
+    if isObject(r)                     // left static, right object
       each r 
         if it isnt undefined
           set l[key] it
@@ -791,7 +791,7 @@ overlay_op task given l, r
     return l
     
   set l self iterate                    
-  if @mustIterate(r)                     // left iterate, right iterate
+  if mustIterate(r)                     // left iterate, right iterate
     set r self iterate
     return from process
       set vl l.next()
@@ -821,21 +821,21 @@ overlay_op task given l, r
 //
 
 select_op task given src, manifest
-  unless @isMergable(src)
+  unless isMergable(src)
     throw new ~Error "SAI: Left argument to SELECT must be list/traits/iterable."
 
-  unless @isMergable(manifest)
+  unless isMergable(manifest)
     if undefined is manifest .. return manifest
     set manifest array manifest
 
-  if @isArray(src)
-    if @isArray(manifest)                      // array, array
+  if isArray(src)
+    if isArray(manifest)                      // array, array
       set result empty
       ply manifest
         result.push src[it]
       return result
       
-    else if @mustIterate(manifest)             // array, iterator
+    else if mustIterate(manifest)             // array, iterator
       set src copy src
       return from process
         iterate manifest
@@ -846,8 +846,8 @@ select_op task given src, manifest
       result.push src[key]
     return result
     
-  else if @mustIterate(src)
-    if @mustIterate(manifest)                  // iterator, iterator
+  else if mustIterate(src)
+    if mustIterate(manifest)                  // iterator, iterator
       set src self iterate
       return from process
         set l src.next()
@@ -858,7 +858,7 @@ select_op task given src, manifest
             set l src.next()
           yield buffer[it]
 
-    if @isArray(manifest)                      // iterator, array
+    if isArray(manifest)                      // iterator, array
       set manifest copy manifest
       set src self iterate
       return from process
@@ -879,7 +879,7 @@ select_op task given src, manifest
           inc i
           if i>=manifest.length .. return
           
-  if @mustIterate(manifest)                    // traits, iterator
+  if mustIterate(manifest)                    // traits, iterator
     set src copy src
     return from process
       iterate manifest
@@ -887,12 +887,12 @@ select_op task given src, manifest
           yield src[it]
           
   set result blank
-  if @isArray(manifest)                          // traits, array
+  if isArray(manifest)                          // traits, array
     ply manifest
       set result[it] src[it]
     return result
   
-  if @isObject(manifest)                        // traits, traits
+  if isObject(manifest)                        // traits, traits
     each manifest
       set result[key] src[key]
 
@@ -914,17 +914,17 @@ update_op task as dest, manifest
   if undefined is dest
     set dest blank
     
-  unless @isArray(dest) or @isObject(dest)
+  unless isArray(dest) or isObject(dest)
     throw new ~Error "Attempt to UPDATE into something that's not a list or traits."
 
-  unless @isMergable(manifest)
+  unless isMergable(manifest)
     throw new ~Error "Attempt to UPDATE from something that's not a list or traits."
 
-  if @mustIterate(manifest)
+  if mustIterate(manifest)
     iterate manifest
       if it isnt undefined .. set dest[key] it
 
-  else if @isArray(manifest)
+  else if isArray(manifest)
     ply manifest
       if it isnt undefined .. set dest[key] it
 
@@ -945,9 +945,9 @@ update_op task as dest, manifest
 //
 
 delete_op task as dest, manifest
-  if @mustIterate(dest)
+  if mustIterate(dest)
     throw new ~Error "SAI: Attempt to DELETE from an iterator, which is not presently supported."
-  unless @isObject(dest)
+  unless isObject(dest)
     throw new ~Error "SAI: Attempt to DELETE from something that's not a list or traits."
   set
     splicer task given index
@@ -960,12 +960,12 @@ delete_op task as dest, manifest
       unless index is undefined
         delete dest[index]
       
-  if @isArray(dest)
-    unless @isMergable(manifest)
+  if isArray(dest)
+    unless isMergable(manifest)
       splicer manifest
-    else if @isArray(manifest)
+    else if isArray(manifest)
       ply manifest using splicer
-    else if @mustIterate(manifest)
+    else if mustIterate(manifest)
       iterate manifest using splicer
     else
       each manifest 
@@ -974,13 +974,13 @@ delete_op task as dest, manifest
           dest.splice index,1
 
   else // it's not an array
-    unless @isMergable(manifest)
+    unless isMergable(manifest)
       delete dest[manifest]
-    else if @isArray(manifest)
+    else if isArray(manifest)
       ply manifest using deletel
-    else if @mustIterate(manifest)
+    else if mustIterate(manifest)
       iterate manifest using deletel
-    else if @isObject(manifest)
+    else if isObject(manifest)
       each manifest using deleter
     else
       delete dest[manifest]
@@ -999,7 +999,7 @@ deepFreeze task given o
     if not o.hasOwnProperty(key) .. continue
     if 'object' isnt typeof it .. continue
     if ~Object.isFrozen(it) .. continue
-    @deepFreeze it
+    deepFreeze it
 
 
 // xor
@@ -1050,13 +1050,13 @@ compare_op task given a, b
 
 keys_op task given a
   set result empty
-  if @isArray(a)
+  if isArray(a)
     count a.length
       result.push counter
-  else if @mustIterate(a)
+  else if mustIterate(a)
     iterate a
       result.push key
-  else if @isObject(a)
+  else if isObject(a)
     each a
       result.push key
   return result
@@ -1068,14 +1068,14 @@ keys_op task given a
 //
 
 count_op task given a
-  if @isArray(a)
+  if isArray(a)
     return a.length
   set i 0
-  if @mustIterate(a)
+  if mustIterate(a)
     iterate a
       inc i
     return i
-  if @isObject(a)
+  if isObject(a)
     each a
       inc i
     return i
@@ -1090,12 +1090,12 @@ count_op task given a
 //
 
 values_op task given a
-  if @isArray(a)
+  if isArray(a)
     return copy a
-  if @mustIterate(a)
-    return @collect_op(a)
+  if mustIterate(a)
+    return collect_op(a)
   set result empty
-  if @isObject(a)
+  if isObject(a)
     each a
       result.push it
     return result
@@ -1162,7 +1162,7 @@ expects_op task given params, prototype
 //
 
 expectsThrow task given params, prototype, name
-  set x @expects_op(params,prototype)
+  set x expects_op(params,prototype)
   unless x.length .. return
   set err empty
   each x
@@ -1184,7 +1184,7 @@ finalizePrototype task given proto
   delete proto.__tobelocked
   
   each proto.__tobefrozen
-    @deepFreeze proto[it]
+    deepFreeze proto[it]
   delete proto.__tobefrozen
   
   if proto.__unverified
@@ -1208,7 +1208,7 @@ finalizePrototype task given proto
 //
 
 create_op_base task given name, parameters
-  set proto @_protocache[name]
+  set proto _protocache[name]
   unless proto
     set fn name + '.js'
     set src FS.readFileSync(fn,'utf8')
@@ -1234,7 +1234,7 @@ create_op_base task given name, parameters
 //
 
 singleton_op task given name, parameters
-  set @_singletoncache[name] default from @create_op name, parameters
-  return @_singletoncache[name]
+  set _singletoncache[name] default from create_op name, parameters
+  return _singletoncache[name]
 
 

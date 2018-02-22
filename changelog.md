@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.0.12
+
+ - eliminate redundant use of `@` for this attributes.
+ 
+
 ### 1.0.11
 
  - Using hasOwnProperty to test for contract fulfillment
