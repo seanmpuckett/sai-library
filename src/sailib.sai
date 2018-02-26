@@ -1,7 +1,7 @@
 reference:
   FS from require 'fs'
   GLOBAL: instance 0
-  
+
 object SAILib singleton
 
 // instance (member) variables
@@ -39,7 +39,7 @@ Instantiate task
 // returns true if the candidate seems to be a true iterator, or at least acts like one
 //
 
-canIterate task given i
+canIterate unbound task given i
   unless i
     return false
   if i[~Symbol.iterator]
@@ -56,7 +56,7 @@ canIterate task given i
 // returns true if the candidate MUST be iterated
 //
 
-mustIterate task given i
+mustIterate unbound task given i
   unless i
     return false
   if 'function' is typeof i.next
@@ -71,7 +71,7 @@ mustIterate task given i
 // returns true if an actual Javascript object
 //
 
-isObject task given i
+isObject unbound task given i
   if i is null
     return false
   if 'object' is typeof i
@@ -84,7 +84,7 @@ isObject task given i
 // returns true if an actual Javascript array
 //
 
-isArray task given i
+isArray unbound task given i
   return from ~Array.isArray i
 
   
@@ -93,7 +93,7 @@ isArray task given i
 // returns true if a String object
 //
 
-isString task given i
+isString unbound task given i
   return 'string' is typeof i
 
   
@@ -131,7 +131,7 @@ coverage task given test, description
 // throw an error if the test is false
 //
 
-assert task as test, message
+assert unbound task as test, message
   unless test
     throw new ~Error 'SAI: failed assertion: ${message default ""}'
 
