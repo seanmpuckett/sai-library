@@ -1,5 +1,11 @@
 ## Changelog
 
+### 1.0.14
+
+ - `assert_op` now returns the value we tested with
+ - `assert_op` also now actually prints the error message (cool, eh)
+ 
+
 ### 1.0.13
 
  - several utility functions declared as `unbound`

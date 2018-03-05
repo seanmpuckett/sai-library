@@ -131,9 +131,11 @@ coverage task given test, description
 // throw an error if the test is false
 //
 
-assert unbound task as test, message
+assert unbound task as test, txt
   unless test
-    throw new ~Error 'SAI: failed assertion: ${message default ""}'
+    set msg to ("SAI: failed assertion " + txt)
+    throw new Error msg
+  return test
 
 
 // debug
@@ -614,7 +616,7 @@ slice_op task given a, st, ct
         return from a.substring len+st, len+st+ct
       else
         return from a.substring len+st, len // -st, u
-    throw new ~Error 'SAI: Bad parameters in call to LIMIT/slice'
+    throw new Error 'SAI: Bad parameters in call to LIMIT/slice'
   
   // zero count 
   if ct is 0                      // *, 0
@@ -664,7 +666,7 @@ slice_op task given a, st, ct
         return from a.slice len+st, len+st+ct
       else
         return from a.slice len+st, len // -st, u
-    throw new ~Error 'SAI: Bad parameters in call to LIMIT/slice'
+    throw new Error 'SAI: Bad parameters in call to LIMIT/slice'
   
   // generator
   set
@@ -763,9 +765,9 @@ overlay_op task given l, r
     set l blank
 
   if not isMergable(l)
-    throw new ~Error "SAI: Attempt to OVERLAY onto something that's not a collection/iterable."
+    throw new Error "SAI: Attempt to OVERLAY onto something that's not a collection/iterable."
   if not isMergable(r)
-    throw new ~Error "SAI: Attempt to OVERLAY with something that's not a collection/iterable."
+    throw new Error "SAI: Attempt to OVERLAY with something that's not a collection/iterable."
   
   unless mustIterate(l)               
     set l copy self
@@ -822,7 +824,7 @@ overlay_op task given l, r
 
 select_op task given src, manifest
   unless isMergable(src)
-    throw new ~Error "SAI: Left argument to SELECT must be list/traits/iterable."
+    throw new Error "SAI: Left argument to SELECT must be list/traits/iterable."
 
   unless isMergable(manifest)
     if undefined is manifest .. return manifest
@@ -915,10 +917,10 @@ update_op task as dest, manifest
     set dest blank
     
   unless isArray(dest) or isObject(dest)
-    throw new ~Error "Attempt to UPDATE into something that's not a list or traits."
+    throw new Error "Attempt to UPDATE into something that's not a list or traits."
 
   unless isMergable(manifest)
-    throw new ~Error "Attempt to UPDATE from something that's not a list or traits."
+    throw new Error "Attempt to UPDATE from something that's not a list or traits."
 
   if mustIterate(manifest)
     iterate manifest
@@ -946,9 +948,9 @@ update_op task as dest, manifest
 
 delete_op task as dest, manifest
   if mustIterate(dest)
-    throw new ~Error "SAI: Attempt to DELETE from an iterator, which is not presently supported."
+    throw new Error "SAI: Attempt to DELETE from an iterator, which is not presently supported."
   unless isObject(dest)
-    throw new ~Error "SAI: Attempt to DELETE from something that's not a list or traits."
+    throw new Error "SAI: Attempt to DELETE from something that's not a list or traits."
   set
     splicer task given index
       unless index is undefined
@@ -1110,7 +1112,7 @@ values_op task given a
 //
 
 newerror task given line, file, parameters
-  set e new ~Error parameters.message, file, line
+  set e new Error parameters.message, file, line
   each parameters
     set e[key] to it
   return e
@@ -1167,7 +1169,7 @@ expectsThrow task given params, prototype, name
   set err empty
   each x
     err.push '${it.trait} should be ${it.expects} but is instead ${it.found}'
-  throw new ~Error 'SAI: parameter exception in ${name}\n${err.join('\n')}'
+  throw new Error 'SAI: parameter exception in ${name}\n${err.join('\n')}'
 
 
 // FinalizePrototype
@@ -1190,7 +1192,7 @@ finalizePrototype task given proto
   if proto.__unverified
     each proto.__contracts
       unless hasOwnProperty'd proto it
-        throw new ~Error "SAI: Contractually required trait ${it} does not exist in object ${proto.isa}."
+        throw new Error "SAI: Contractually required trait ${it} does not exist in object ${proto.isa}."
     delete proto.__unverified
     delete proto.__contracts
 
@@ -1220,7 +1222,7 @@ create_op_base task given name, parameters
     set my _protocache[name] proto
 
   unless proto
-    throw new ~Error 'SAI.Create: Do not know how to create SAI object ${name}.';
+    throw new Error 'SAI.Create: Do not know how to create SAI object ${name}.';
 
   set obj ~Object.create(proto)
   if obj.Constructor .. obj.Constructor
