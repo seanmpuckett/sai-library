@@ -1,5 +1,11 @@
 ## Changelog
 
+### 1.0.15
+
+ - refactoring for construct reformatting
+ - altered `clone_op` to copy undefined values as well (not sure why I had it ignoring undefined values before)
+ 
+
 ### 1.0.14
 
  - `assert_op` now returns the value we tested with

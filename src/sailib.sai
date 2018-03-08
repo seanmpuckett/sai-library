@@ -148,7 +148,7 @@ debug_op task as o
     set o default 'undefined'
     if 'function' is typeof o.next
       set o '{possible iterator via .next}'
-    else if 'function' is typeof o
+    elsif 'function' is typeof o
       set o '{function}'
     debugFunction o
   catch
@@ -298,7 +298,7 @@ enlist_op task given a
   if mustIterate(a)
     iterate a
       out.push it
-  else if isObject(a)
+  elsif isObject(a)
     each a
       out.push: key, it
   else
@@ -329,10 +329,10 @@ entrait_op task given a
   if mustIterate(a)
     iterate a
       assign .0, .1
-  else if isArray(a)
+  elsif isArray(a)
     ply a
       assign .0, .1
-  else if isObject(a)
+  elsif isObject(a)
     return a
   else
     set out[a] true
@@ -370,12 +370,12 @@ audit_op task given a, fn
   if isArray(a)
     ply a
       fn it, key
-  else if mustIterate(a)
+  elsif mustIterate(a)
     return from process
       iterate a
         fn it, key
         yield it
-  else if isObject(a)
+  elsif isObject(a)
     each a
       fn it, key
   return a
@@ -436,12 +436,12 @@ concat_op task given a, b, inplace
       
   if not isArray(a)
     set a array a
-  else unless inplace
+  elsunless inplace
     set a copy a
     
   if mustIterate(b)
     iterate b .. a.push it
-  else if isArray(b)
+  elsif isArray(b)
     set a a.concat(b) 
   else
     a.push b
@@ -600,19 +600,19 @@ slice_op task given a, st, ct
     set len a.length
     if undefined is st and ct<0     // u, -ct
       return from a.substring len+ct, len
-    else if 0 is st and ct<0        // 0, -ct
+    elsif 0 is st and ct<0        // 0, -ct
       return from a.substring 0, len+ct
-    else if st>0                    
+    elsif st>0                    
       if ct<0                       // +st, -ct
         return from a.substring st, len+ct
-      else if ct>0                  // +st, +ct
+      elsif ct>0                  // +st, +ct
         return from a.substring st, st+ct
       else                          // +st, u
         return from a.substring st, len
-    else if st<0                
+    elsif st<0                
       if ct<0                       // -st, -ct
         return from a.substring len+st, len+ct
-      else if ct>0                  // -st, +ct
+      elsif ct>0                  // -st, +ct
         return from a.substring len+st, len+st+ct
       else
         return from a.substring len+st, len // -st, u
@@ -650,19 +650,19 @@ slice_op task given a, st, ct
     set len a.length
     if undefined is st and ct<0     // u, -ct
       return from a.slice len+ct, len
-    else if 0 is st and ct<0        // 0, -ct
+    elsif 0 is st and ct<0        // 0, -ct
       return from a.slice 0, len+ct
-    else if st>0                    
+    elsif st>0                    
       if ct<0                       // +st, -ct
         return from a.slice st, len+ct
-      else if ct>0                  // +st, +ct
+      elsif ct>0                  // +st, +ct
         return from a.slice st, st+ct
       else                          // +st, u
         return from a.slice st, len
-    else if st<0                
+    elsif st<0                
       if ct<0                       // -st, -ct
         return from a.slice len+st, len+ct
-      else if ct>0                  // -st, +ct
+      elsif ct>0                  // -st, +ct
         return from a.slice len+st, len+st+ct
       else
         return from a.slice len+st, len // -st, u
@@ -679,19 +679,19 @@ slice_op task given a, st, ct
   if undefined is st and ct<0         // u, -
     set keep false
     set size to -ct
-  else if st<0                        // -, *
+  elsif st<0                        // -, *
     set keep false
     set size (-st)
     if ct<0                           // -, -
       set crop to -ct
-    else if ct>0                      // -, +
+    elsif ct>0                      // -, +
       set crop size-ct
-  else if st>0                        // +, *
+  elsif st>0                        // +, *
     set skip st
     if ct<0                           // +, -
       set size to -ct
       set crop to -ct
-    else if ct>0                      // +, +
+    elsif ct>0                      // +, +
       set only ct
   else                                // 0, -
     set size to -ct
@@ -745,8 +745,7 @@ clone_op task given a
   if isObject(a)
     set b blank
     each a
-      unless undefined is it
-        set b[key] it
+      set b[key] it
     return b
   return a
 
@@ -837,7 +836,7 @@ select_op task given src, manifest
         result.push src[it]
       return result
       
-    else if mustIterate(manifest)             // array, iterator
+    elsif mustIterate(manifest)             // array, iterator
       set src copy src
       return from process
         iterate manifest
@@ -848,7 +847,7 @@ select_op task given src, manifest
       result.push src[key]
     return result
     
-  else if mustIterate(src)
+  elsif mustIterate(src)
     if mustIterate(manifest)                  // iterator, iterator
       set src self iterate
       return from process
@@ -926,7 +925,7 @@ update_op task as dest, manifest
     iterate manifest
       if it isnt undefined .. set dest[key] it
 
-  else if isArray(manifest)
+  elsif isArray(manifest)
     ply manifest
       if it isnt undefined .. set dest[key] it
 
@@ -965,9 +964,9 @@ delete_op task as dest, manifest
   if isArray(dest)
     unless isMergable(manifest)
       splicer manifest
-    else if isArray(manifest)
+    elsif isArray(manifest)
       ply manifest using splicer
-    else if mustIterate(manifest)
+    elsif mustIterate(manifest)
       iterate manifest using splicer
     else
       each manifest 
@@ -978,11 +977,11 @@ delete_op task as dest, manifest
   else // it's not an array
     unless isMergable(manifest)
       delete dest[manifest]
-    else if isArray(manifest)
+    elsif isArray(manifest)
       ply manifest using deletel
-    else if mustIterate(manifest)
+    elsif mustIterate(manifest)
       iterate manifest using deletel
-    else if isObject(manifest)
+    elsif isObject(manifest)
       each manifest using deleter
     else
       delete dest[manifest]
@@ -1055,10 +1054,10 @@ keys_op task given a
   if isArray(a)
     count a.length
       result.push counter
-  else if mustIterate(a)
+  elsif mustIterate(a)
     iterate a
       result.push key
-  else if isObject(a)
+  elsif isObject(a)
     each a
       result.push key
   return result
@@ -1139,7 +1138,7 @@ expects_op task given params, prototype
   set tester task given param, name, type
     if type is typeof param
       nop // good
-    else if param.isof and param.isof[type]
+    elsif param.isof and param.isof[type]
       nop // good
     else  // bad
       if param.isa
@@ -1150,9 +1149,9 @@ expects_op task given params, prototype
   each prototype as type
     if key is '_root'
       tester params, 'Root', type
-    else unless params[key]
+    elsunless params[key]
       result.push: trait key, 'expects' type, found 'undefined'
-    else if type isnt true
+    elsif type isnt true
       tester params[key], key, type
 
   return result
