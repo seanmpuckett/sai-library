@@ -1,5 +1,14 @@
 ## Changelog
 
+### 1.0.16
+
+ - removed tab characters in source file
+ - fixed `expects_op` to use `hasOwnProperty` like it should have all along
+ - minor functionality change in `overlay_op`, regularizing how a leftside static and rightside iterator work in comparison to `update_op`.
+ - new `reduce_op_fast` is similar to `reduce_op` but does not take special action on an `undefined` start value. SAI is moving to this new approach as _pipers_ are integrated.
+ - syntax changes for alteration to new _pipers_ system in SAI.
+
+
 ### 1.0.15
 
  - refactoring for construct reformatting

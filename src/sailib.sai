@@ -388,23 +388,23 @@ audit_op task given a, fn
 // Returns a new array, unless "inplace" is set, 
 // then will modify the first array inplace if possible.
 //
-//	[1, 2] concat [3, 4] -> [1, 2, 3, 4]
-//	[1, 2] concat [[3, 4], [5, 6]] -> [1, 2, [3, 4], [5, 6]]
-//	[1, 2] concat 3 -> [1, 2, 3]
-//	[1, 2] concat {c:3, d:4} -> [1, 2, {c:3, d:4}]
-//	[1, 2] concat undef -> [1, 2]
-//	1 concat [3, 4] -> [1, 3, 4]
-//	1 concat 3 -> [1, 3]
-//	1 concat {c:3, d:4} -> [1, {c:3, d:4}]
-//	1 concat undef -> [1]
-//	{a:1, b:2} concat [3, 4] -> [{a:1, b:2}, 3, 4]
-//	{a:1, b:2} concat 3 -> [{a:1, b:2}, 3]
-//	{a:1, b:2} concat {c:3, d:4} -> [{a:1, b:2}, {c:3, d:4}]
-//	{a:1, b:2} concat undef -> [{a:1, b:2}]
-//	undef concat undef -> undef
-//	undef concat 3 -> [3]
-//	undef concat {c:3, d:4} -> [{c:3, d:4}]
-//	undef concat [3, 4] -> [3, 4]
+//  [1, 2] concat [3, 4] -> [1, 2, 3, 4]
+//  [1, 2] concat [[3, 4], [5, 6]] -> [1, 2, [3, 4], [5, 6]]
+//  [1, 2] concat 3 -> [1, 2, 3]
+//  [1, 2] concat {c:3, d:4} -> [1, 2, {c:3, d:4}]
+//  [1, 2] concat undef -> [1, 2]
+//  1 concat [3, 4] -> [1, 3, 4]
+//  1 concat 3 -> [1, 3]
+//  1 concat {c:3, d:4} -> [1, {c:3, d:4}]
+//  1 concat undef -> [1]
+//  {a:1, b:2} concat [3, 4] -> [{a:1, b:2}, 3, 4]
+//  {a:1, b:2} concat 3 -> [{a:1, b:2}, 3]
+//  {a:1, b:2} concat {c:3, d:4} -> [{a:1, b:2}, {c:3, d:4}]
+//  {a:1, b:2} concat undef -> [{a:1, b:2}]
+//  undef concat undef -> undef
+//  undef concat 3 -> [3]
+//  undef concat {c:3, d:4} -> [{c:3, d:4}]
+//  undef concat [3, 4] -> [3, 4]
 //
 
 concat_op task given a, b, inplace
@@ -504,7 +504,49 @@ filter_op task given a, fn
   return fn(a,undefined) ?? a :: undefined
 
   
-// reduce
+// reduce_op_fast (no special handling for undefined start values)
+//
+// With a starting value (accumulator) that persists through invocations,
+// invoke a function on every element of the provided array/object/iterator
+// and return the accumulator.
+//
+
+reduce_op_fast task given a, fn, accum
+
+  if undefined is a .. return a
+  
+  if isArray(a)
+    set l a.length
+    unless l .. return accum
+    set k 0
+    while k < l
+      set accum fn(accum,a[k],k)
+      inc k
+    return accum
+    
+  if mustIterate(a)
+    return from process
+      set a a | iterate // activate iterator if necessary
+      set step a.next()
+      unless step.done
+        set k 0
+        until step.done
+          set accum fn(accum, step.value, k)
+          set step a.next()
+          inc k
+      yield accum
+
+  if isObject(a)
+    each a
+      set accum fn(accum,it,key)
+        
+    return accum
+
+  // wrap in array and try again
+  return reduce_op((array a), fn, accum)
+  
+
+// reduce_op
 //
 // With a starting value (accumulator) that persists through invocations,
 // invoke a function on every element of the provided array/object/iterator
@@ -529,7 +571,7 @@ reduce_op task given a, fn, accum
     
   if mustIterate(a)
     return from process
-      set a a iterate // activate iterator if necessary
+      set a | iterate // activate iterator if necessary
       set step a.next()
       unless step.done
         set k 0
@@ -697,7 +739,7 @@ slice_op task given a, st, ct
     set size to -ct
     set crop to -ct
 
-  set a self iterate
+  set a | iterate
   
   return from process
     set cache empty
@@ -771,15 +813,15 @@ overlay_op task given l, r
   unless mustIterate(l)               
     set l copy self
     if mustIterate(r)                   // left static, right iterate
-      return from process
-        set r self iterate
-        set v r.next()
-        ply l
-          unless v.done
-            yield v.value default it
-            set v r.next()
-          else
-            yield it
+      if isArray(l)
+        return from process
+          iterate r
+            yield it ? l\key
+      else
+        iterate r
+          exists it
+            set l\key it
+        return l
 
     if isObject(r)                     // left static, right object
       each r 
@@ -791,9 +833,9 @@ overlay_op task given l, r
           set l[key] it
     return l
     
-  set l self iterate                    
+  set l | iterate                    
   if mustIterate(r)                     // left iterate, right iterate
-    set r self iterate
+    set r | iterate
     return from process
       set vl l.next()
       set vr r.next()
@@ -849,7 +891,7 @@ select_op task given src, manifest
     
   elsif mustIterate(src)
     if mustIterate(manifest)                  // iterator, iterator
-      set src self iterate
+      set src | iterate
       return from process
         set l src.next()
         set buffer empty
@@ -861,7 +903,7 @@ select_op task given src, manifest
 
     if isArray(manifest)                      // iterator, array
       set manifest copy manifest
-      set src self iterate
+      set src | iterate
       return from process
         set l src.next()
         set buffer empty
@@ -871,7 +913,7 @@ select_op task given src, manifest
             set l src.next()
           yield buffer[it]
         
-    set manifest (self keys thru number .) by asc             // iterator, traits
+    set manifest self | keys | thru number . | by it asc
     return from process
       set i 0
       iterate src
@@ -945,11 +987,15 @@ update_op task as dest, manifest
 // [a:1, b:2, c:3] delete {b:5} -> [a:1, c:3]
 //
 
-delete_op task as dest, manifest
+delete_op task as dest, manifest, clone
   if mustIterate(dest)
     throw new Error "SAI: Attempt to DELETE from an iterator, which is not presently supported."
   unless isObject(dest)
     throw new Error "SAI: Attempt to DELETE from something that's not a list or traits."
+  
+  if clone
+    set dest copy dest
+    
   set
     splicer task given index
       unless index is undefined
@@ -1149,8 +1195,8 @@ expects_op task given params, prototype
   each prototype as type
     if key is '_root'
       tester params, 'Root', type
-    elsunless params[key]
-      result.push: trait key, 'expects' type, found 'undefined'
+    elsunless params.hasOwnProperty(key)
+      result.push: trait key, 'expects' type, found 'missing'
     elsif type isnt true
       tester params[key], key, type
 
@@ -1167,7 +1213,7 @@ expectsThrow task given params, prototype, name
   unless x.length .. return
   set err empty
   each x
-    err.push '${it.trait} should be ${it.expects} but is instead ${it.found}'
+    err.push '${it.trait} should be ${it.expects is 'true' ?? 'existence' :: it.expects} but is instead ${it.found}'
   throw new Error 'SAI: parameter exception in ${name}\n${err.join('\n')}'
 
 
@@ -1213,12 +1259,12 @@ create_op_base task given name, parameters
   unless proto
     set fn name + '.js'
     set src FS.readFileSync(fn,'utf8')
-    if '#!' is src limit 0, 2 
+    if '#!' is src | limit 0, 2 
       set src replace'd self /\#\![^\r\n\u0085\u2028\u2029]+/, ''
     set src '(function(exports, require, module, __filename, __dirname) {${src}});'
     set mod from ~eval src
     set proto from mod blank, ~require, blank, fn, ~__dirname
-    set my _protocache[name] proto
+    set _protocache[name] proto
 
   unless proto
     throw new Error 'SAI.Create: Do not know how to create SAI object ${name}.';
