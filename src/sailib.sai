@@ -1049,6 +1049,57 @@ deepFreeze task given o
     deepFreeze it
 
 
+// l_op
+//
+// logical operations on arrays/traits/generators
+
+l_op task given op, a
+  switch op
+  
+  case 'and'
+    if isArray(a)
+      ply a
+        unless it .. return it
+      else
+        return undefined
+      return a
+    elsif mustIterate(a)
+      return process
+        iterate a
+          unless it .. yield it
+        else
+          yield undefined
+        yield true
+    elsif isObject(a)
+      each a
+        unless it .. return it
+      else
+        return undefined
+      return a
+    else
+      return a
+  
+  case 'or'
+    if isArray(a)
+      ply a
+        if it .. return it
+      return undefined
+    elsif mustIterate(a)
+      return process
+        iterate a
+          if it .. yield it
+        yield undefined
+    elsif isObject(a)
+      each a
+        if it .. return it
+      return undefined
+    else
+      return a
+
+  else
+    throw new Error "SAI Runtime: unknown logical operator ${op} in sailib.l_op"
+
+
 // xor
 //
 // return true if a XOR b

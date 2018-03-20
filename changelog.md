@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.0.17
+
+ - new `l_op` logical operator; calculates boolean results on collections
+  
+
 ### 1.0.16
 
  - removed tab characters in source file
