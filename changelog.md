@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.0.18
+
+ - additional declarations of `unbound` for performance
+ 
+
 ### 1.0.17
 
  - new `l_op` logical operator; calculates boolean results on collections
