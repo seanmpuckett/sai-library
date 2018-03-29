@@ -1,5 +1,11 @@
 ## Changelog
 
+### 1.0.19 
+
+ - `reduce_op_fast` is now `sum_op` 
+ - `reduce_op` is now a true reduce that expects functions to take two items and produce one; if there is only one item, the function is NOT called.
+
+
 ### 1.0.18
 
  - additional declarations of `unbound` for performance

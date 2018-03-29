@@ -504,13 +504,16 @@ filter_op unbound task given a, fn
   return fn(a,undefined) ?? a :: undefined
 
   
-// reduce_op_fast (no special handling for undefined start values)
+// sum_op 
 //
 // With a starting value (accumulator) that persists through invocations,
 // invoke a function on every element of the provided array/object/iterator
-// and return the accumulator.
+// and return the accumulator. Not a true reduction, but close.
 //
 
+sum_op unbound task given a, fn, accum
+  return from reduce_op_fast a, fn, accum
+  
 reduce_op_fast unbound task given a, fn, accum
 
   if undefined is a .. return a
@@ -526,44 +529,40 @@ reduce_op_fast unbound task given a, fn, accum
     
   if mustIterate(a)
     return from process
-      set a a | iterate // activate iterator if necessary
+      set a | iterate // activate iterator if necessary
       set step a.next()
-      unless step.done
-        set k 0
-        until step.done
-          set accum fn(accum, step.value, k)
-          set step a.next()
-          inc k
+      set k 0
+      until step.done
+        set accum fn(accum, step.value, k)
+        set step a.next()
+        inc k
       yield accum
 
   if isObject(a)
     each a
-      set accum fn(accum,it,key)
-        
+      set accum fn(accum,it,key)        
     return accum
 
   // wrap in array and try again
-  return reduce_op((array a), fn, accum)
+  return reduce_op_fast((array a), fn, accum)
   
 
 // reduce_op
 //
-// With a starting value (accumulator) that persists through invocations,
-// invoke a function on every element of the provided array/object/iterator
-// and return the accumulator.
-//
+// This version starts the reduction with the first item in the collection.
+// The function gets the reduction and the next item, sequentially. It can
+// combine them however it pleases.
 
-reduce_op unbound task given a, fn, accum
+
+reduce_op unbound task given a, fn
 
   if undefined is a .. return a
   
   if isArray(a)
     set l a.length
-    unless l .. return accum
-    set k 0
-    if undefined is accum
-      set accum a[k]
-      inc k
+    unless l .. return undefined
+    set accum copy a[0]
+    set k 1
     while k < l
       set accum fn(accum,a[k],k)
       inc k
@@ -573,23 +572,22 @@ reduce_op unbound task given a, fn, accum
     return from process
       set a | iterate // activate iterator if necessary
       set step a.next()
-      unless step.done
-        set k 0
-        if undefined is accum
-          set accum step.value
-          set step a.next()
-          inc k
-        until step.done
-          set accum fn(accum, step.value, k)
-          set step a.next()
-          inc k
+      if step.done
+        return undefined
+      set accum copy step.value
+      set k 1
+      set step a.next()
+      until step.done
+        set accum fn(accum, step.value, k)
+        set step a.next()
+        inc k
       yield accum
 
   if isObject(a)
-    set init undefined is accum
+    set init true
     each a
       if init
-        set accum it
+        set accum copy it
         set init false
       else
         set accum fn(accum,it,key)
@@ -597,7 +595,7 @@ reduce_op unbound task given a, fn, accum
     return accum
 
   // wrap in array and try again
-  return reduce_op((array a), fn, accum)
+  return reduce_op((array a), fn)
   
 
 // slice
