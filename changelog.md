@@ -1,5 +1,12 @@
 ## Changelog
 
+### 1.0.20
+
+ - Bug in   `kviterate_op` also bug in test suite i guess
+ - Also bug in `sum_op` so embarassing
+ - added `environment` to give running modules access to the information about their SAI context
+ 
+
 ### 1.0.19 
 
  - `reduce_op_fast` is now `sum_op` 

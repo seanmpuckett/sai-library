@@ -1,5 +1,5 @@
 reference:
-  FS from require 'fs'
+  FS call require 'fs'
   GLOBAL: instance 0
 
 object SAILib singleton
@@ -19,6 +19,7 @@ instance:
   
   serial_number undefined
   create_op undefined
+  environment undefined
   
 // Instantiate
 //
@@ -31,7 +32,8 @@ Instantiate task
   inc GLOBAL.instance
   set serial_number GLOBAL.instance
 
-  set create_op create_op_base
+  set create_op bind create_op_base
+  set environment bind environment_base
 
 
 // canIterate (utility)
@@ -85,7 +87,7 @@ isObject unbound task given i
 //
 
 isArray unbound task given i
-  return from ~Array.isArray i
+  return call ~Array.isArray i
 
   
 // isString (utility)
@@ -169,9 +171,9 @@ iterator_op unbound task given i
   if 'function' is typeof i.next
     return i
   if 'function' is typeof i
-    return from i
+    return call i
   if i[~Symbol.iterator]
-    return from i[~Symbol.iterator]
+    return call i[~Symbol.iterator]
   return i
 
 
@@ -184,18 +186,18 @@ iterate_op unbound task given a
   if undefined is a
     return a
   if mustIterate(a)
-    return from iterator_op a 
+    return call iterator_op a 
   if a[~Symbol.iterator]
-    return from a[~Symbol.iterator]
+    return call a[~Symbol.iterator]
   if isArray(a)
-    return from process
+    return call process
       ply a
         yield it
   if isObject(a)
-    return from process
+    return call process
       each a
         yield: key, it
-  return from process
+  return call process
     yield a
 
 
@@ -207,26 +209,26 @@ iterate_op unbound task given a
 //
 
 kviterate_op unbound task given a
-  unless a
-    return from process
+  if a is undefined
+    return call process
       nop
   if mustIterate(a)
-    return from process
+    return call process
       iterate a
         yield: key, it
   if a[~Symbol.iterator]
-    return from process
+    return call process
       iterate a
         yield: key, it
   if isArray(a)
-    return from process
+    return call process
       ply a
         yield: key, it
   if isObject(a)
-    return from process
+    return call process
       each a
         yield: key, it
-  return from process
+  return call process
     yield: 0, a
 
 
@@ -371,7 +373,7 @@ audit_op unbound task given a, fn
     ply a
       fn it, key
   elsif mustIterate(a)
-    return from process
+    return call process
       iterate a
         fn it, key
         yield it
@@ -420,17 +422,17 @@ concat_op unbound task given a, b, inplace
   
   if mustIterate(a)
     if mustIterate(b)
-      return from process
+      return call process
         iterate a .. yield it
         iterate b .. yield it
       
     if isArray(b)
       set b copy b
-      return from process
+      return call process
         iterate a .. yield it
         ply b .. yield it
     
-    return from process
+    return call process
       iterate a .. yield it
       yield b
       
@@ -465,7 +467,7 @@ map_op unbound task given a, fn
     return r
     
   if mustIterate(a)
-    return from process
+    return call process
       iterate a .. yield fn(it,key)
 
   if isObject(a)
@@ -493,7 +495,7 @@ filter_op unbound task given a, fn
     return r
 
   if mustIterate(a)
-    return from process
+    return call process
       iterate a .. if fn(it,key) .. yield it
           
   if isObject(a)
@@ -512,10 +514,7 @@ filter_op unbound task given a, fn
 //
 
 sum_op unbound task given a, fn, accum
-  return from reduce_op_fast a, fn, accum
   
-reduce_op_fast unbound task given a, fn, accum
-
   if undefined is a .. return a
   
   if isArray(a)
@@ -528,7 +527,7 @@ reduce_op_fast unbound task given a, fn, accum
     return accum
     
   if mustIterate(a)
-    return from process
+    return call process
       set a | iterate // activate iterator if necessary
       set step a.next()
       set k 0
@@ -544,7 +543,7 @@ reduce_op_fast unbound task given a, fn, accum
     return accum
 
   // wrap in array and try again
-  return reduce_op_fast((array a), fn, accum)
+  return sum_op((array a), fn, accum)
   
 
 // reduce_op
@@ -555,7 +554,7 @@ reduce_op_fast unbound task given a, fn, accum
 
 
 reduce_op unbound task given a, fn
-
+  
   if undefined is a .. return a
   
   if isArray(a)
@@ -569,7 +568,7 @@ reduce_op unbound task given a, fn
     return accum
     
   if mustIterate(a)
-    return from process
+    return call process
       set a | iterate // activate iterator if necessary
       set step a.next()
       if step.done
@@ -639,23 +638,23 @@ slice_op unbound task given a, st, ct
       return a.substring(0, ct)
     set len a.length
     if undefined is st and ct<0     // u, -ct
-      return from a.substring len+ct, len
+      return call a.substring len+ct, len
     elsif 0 is st and ct<0        // 0, -ct
-      return from a.substring 0, len+ct
+      return call a.substring 0, len+ct
     elsif st>0                    
       if ct<0                       // +st, -ct
-        return from a.substring st, len+ct
+        return call a.substring st, len+ct
       elsif ct>0                  // +st, +ct
-        return from a.substring st, st+ct
+        return call a.substring st, st+ct
       else                          // +st, u
-        return from a.substring st, len
+        return call a.substring st, len
     elsif st<0                
       if ct<0                       // -st, -ct
-        return from a.substring len+st, len+ct
+        return call a.substring len+st, len+ct
       elsif ct>0                  // -st, +ct
-        return from a.substring len+st, len+st+ct
+        return call a.substring len+st, len+st+ct
       else
-        return from a.substring len+st, len // -st, u
+        return call a.substring len+st, len // -st, u
     throw new Error 'SAI: Bad parameters in call to LIMIT/slice'
   
   // zero count 
@@ -681,7 +680,7 @@ slice_op unbound task given a, st, ct
     if isArray(a)
       return a.slice(0,ct)
     else
-      return from process
+      return call process
         iterate a
           if key < ct .. yield it
           else .. break
@@ -689,23 +688,23 @@ slice_op unbound task given a, st, ct
   if isArray(a)
     set len a.length
     if undefined is st and ct<0     // u, -ct
-      return from a.slice len+ct, len
+      return call a.slice len+ct, len
     elsif 0 is st and ct<0        // 0, -ct
-      return from a.slice 0, len+ct
+      return call a.slice 0, len+ct
     elsif st>0                    
       if ct<0                       // +st, -ct
-        return from a.slice st, len+ct
+        return call a.slice st, len+ct
       elsif ct>0                  // +st, +ct
-        return from a.slice st, st+ct
+        return call a.slice st, st+ct
       else                          // +st, u
-        return from a.slice st, len
+        return call a.slice st, len
     elsif st<0                
       if ct<0                       // -st, -ct
-        return from a.slice len+st, len+ct
+        return call a.slice len+st, len+ct
       elsif ct>0                  // -st, +ct
-        return from a.slice len+st, len+st+ct
+        return call a.slice len+st, len+st+ct
       else
-        return from a.slice len+st, len // -st, u
+        return call a.slice len+st, len // -st, u
     throw new Error 'SAI: Bad parameters in call to LIMIT/slice'
   
   // generator
@@ -739,7 +738,7 @@ slice_op unbound task given a, st, ct
 
   set a | iterate
   
-  return from process
+  return call process
     set cache empty
     set v a.next()
     until skip <= 0 or v.done
@@ -812,7 +811,7 @@ overlay_op unbound task given l, r
     set l copy self
     if mustIterate(r)                   // left static, right iterate
       if isArray(l)
-        return from process
+        return call process
           iterate r
             yield it ? l\key
       else
@@ -834,7 +833,7 @@ overlay_op unbound task given l, r
   set l | iterate                    
   if mustIterate(r)                     // left iterate, right iterate
     set r | iterate
-    return from process
+    return call process
       set vl l.next()
       set vr r.next()
       until vr.done
@@ -844,7 +843,7 @@ overlay_op unbound task given l, r
       yielding l
       
   set r copy self                       // left iterate, right static
-  return from process
+  return call process
     set i 0
     set v l.next()
     until v.done
@@ -878,7 +877,7 @@ select_op unbound task given src, manifest
       
     elsif mustIterate(manifest)             // array, iterator
       set src copy src
-      return from process
+      return call process
         iterate manifest
           yield src[it]
           
@@ -890,7 +889,7 @@ select_op unbound task given src, manifest
   elsif mustIterate(src)
     if mustIterate(manifest)                  // iterator, iterator
       set src | iterate
-      return from process
+      return call process
         set l src.next()
         set buffer empty
         iterate manifest
@@ -902,7 +901,7 @@ select_op unbound task given src, manifest
     if isArray(manifest)                      // iterator, array
       set manifest copy manifest
       set src | iterate
-      return from process
+      return call process
         set l src.next()
         set buffer empty
         ply manifest
@@ -912,7 +911,7 @@ select_op unbound task given src, manifest
           yield buffer[it]
         
     set manifest self | keys | thru number . | by it asc
-    return from process
+    return call process
       set i 0
       iterate src
         if key is manifest[i]
@@ -922,7 +921,7 @@ select_op unbound task given src, manifest
           
   if mustIterate(manifest)                    // traits, iterator
     set src copy src
-    return from process
+    return call process
       iterate manifest
         if it isnt undefined
           yield src[it]
@@ -1311,8 +1310,8 @@ create_op_base task given name, parameters
     if '#!' is src | limit 0, 2 
       set src replace'd self /\#\![^\r\n\u0085\u2028\u2029]+/, ''
     set src '(function(exports, require, module, __filename, __dirname) {${src}});'
-    set mod from ~eval src
-    set proto from mod blank, ~require, blank, fn, ~__dirname
+    set mod call ~eval src
+    set proto call mod blank, ~require, blank, fn, ~__dirname
     set _protocache[name] proto
 
   unless proto
@@ -1330,7 +1329,17 @@ create_op_base task given name, parameters
 //
 
 singleton_op task given name, parameters
-  set _singletoncache[name] default from create_op name, parameters
+  set _singletoncache[name] default call create_op name, parameters
   return _singletoncache[name]
 
 
+// environment_base
+//
+// object/access for the SAI environment. This is overridden when running
+// in managed mode.
+
+environment_base task
+  return:
+    dynamic false
+    static true
+    
