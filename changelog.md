@@ -1,5 +1,12 @@
 ## Changelog
 
+### 1.0.21
+
+ - Fixed `create_op` to work with both constructors and bare prototypes.
+ - Added `in_op` for querying collections for multiple values
+ - Added `find_op` for queriyng collections for a single value forwards & backwards
+
+
 ### 1.0.20
 
  - Bug in   `kviterate_op` also bug in test suite i guess

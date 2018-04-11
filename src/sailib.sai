@@ -1,6 +1,13 @@
 reference:
-  FS call require 'fs'
+  FS !require 'fs'
   GLOBAL: instance 0
+
+  COLLECTIONTYPE:
+    ctArray       1
+    ctObject      2
+    ctIterator    3
+    ctScalar      4
+    ctUndefined   5
 
 object SAILib singleton
 
@@ -87,7 +94,7 @@ isObject unbound task given i
 //
 
 isArray unbound task given i
-  return call ~Array.isArray i
+  return Array.isArray(i)
 
   
 // isString (utility)
@@ -107,6 +114,24 @@ isString unbound task given i
 isMergable unbound task given i
   return isArray(i) or isObject(i) or canIterate(i)
 
+
+// collectionType (utility)
+// 
+// returns 'array', 'iterator', 'object', 'scalar' or 'undefined'
+//
+
+collectionType unbound task given a
+  if isArray(a)
+    return 'array'
+  if canIterate(a)
+    return 'iterator'
+  if isObject(a)
+    return 'object'
+  exists a
+    return 'scalar'
+  return 'undefined'
+  
+  
 
 // isCollection (utility)
 //
@@ -171,9 +196,9 @@ iterator_op unbound task given i
   if 'function' is typeof i.next
     return i
   if 'function' is typeof i
-    return call i
+    return !i
   if i[~Symbol.iterator]
-    return call i[~Symbol.iterator]
+    return !i[~Symbol.iterator]
   return i
 
 
@@ -186,18 +211,18 @@ iterate_op unbound task given a
   if undefined is a
     return a
   if mustIterate(a)
-    return call iterator_op a 
+    return iterator_op(a) 
   if a[~Symbol.iterator]
-    return call a[~Symbol.iterator]
+    return !a[~Symbol.iterator]
   if isArray(a)
-    return call process
+    return !process
       ply a
         yield it
   if isObject(a)
-    return call process
+    return !process
       each a
         yield: key, it
-  return call process
+  return !process
     yield a
 
 
@@ -210,25 +235,25 @@ iterate_op unbound task given a
 
 kviterate_op unbound task given a
   if a is undefined
-    return call process
+    return !process
       nop
   if mustIterate(a)
-    return call process
+    return !process
       iterate a
         yield: key, it
   if a[~Symbol.iterator]
-    return call process
+    return !process
       iterate a
         yield: key, it
   if isArray(a)
-    return call process
+    return !process
       ply a
         yield: key, it
   if isObject(a)
-    return call process
+    return !process
       each a
         yield: key, it
-  return call process
+  return !process
     yield: 0, a
 
 
@@ -373,7 +398,7 @@ audit_op unbound task given a, fn
     ply a
       fn it, key
   elsif mustIterate(a)
-    return call process
+    return !process
       iterate a
         fn it, key
         yield it
@@ -422,17 +447,17 @@ concat_op unbound task given a, b, inplace
   
   if mustIterate(a)
     if mustIterate(b)
-      return call process
+      return !process
         iterate a .. yield it
         iterate b .. yield it
       
     if isArray(b)
       set b copy b
-      return call process
+      return !process
         iterate a .. yield it
         ply b .. yield it
     
-    return call process
+    return !process
       iterate a .. yield it
       yield b
       
@@ -467,7 +492,7 @@ map_op unbound task given a, fn
     return r
     
   if mustIterate(a)
-    return call process
+    return !process
       iterate a .. yield fn(it,key)
 
   if isObject(a)
@@ -495,7 +520,7 @@ filter_op unbound task given a, fn
     return r
 
   if mustIterate(a)
-    return call process
+    return !process
       iterate a .. if fn(it,key) .. yield it
           
   if isObject(a)
@@ -505,6 +530,51 @@ filter_op unbound task given a, fn
        
   return fn(a,undefined) ?? a :: undefined
 
+  
+// find
+//
+// Evaluates a function on every element of an array/object/iterator
+// and returns the first (or last) value that a function returns TRUE on.
+// 
+// with iterators, examines each item going through rather than slurping them all up
+// on the theory that if the user has the wisdom that fewer compares but more memory
+// usage is better than a purely iterative __find__, they can do a | collect first.
+
+find_op unbound task given a, fn, last
+  if undefined is a .. return a
+  set ct to collectionType(a)
+
+  switch collectionType(a)
+  case 'array'
+    unless last
+      ply a .. if fn(it,key) .. return it
+    else
+      countdown a.length
+        if fn(a\counter,counter) .. return a\counter
+
+  case 'iterator'
+    unless last
+      iterate a .. if fn(it,key) .. return it
+    else
+      set found false
+      set pick undefined
+      iterate a .. if fn(it,key)
+        set found true
+        set pick it
+      if found
+        return pick
+        
+  case 'object'
+    each a .. if fn(it,key) .. return it
+
+  case 'scalar'
+    if fn(a,0) .. return a
+
+  else
+    throw new Error "SAI Runtime: unexpected collection type in find_op: ${trial}"
+
+  return undefined
+  
   
 // sum_op 
 //
@@ -527,13 +597,13 @@ sum_op unbound task given a, fn, accum
     return accum
     
   if mustIterate(a)
-    return call process
+    return !process
       set a | iterate // activate iterator if necessary
-      set step a.next()
+      set step next!a
       set k 0
       until step.done
         set accum fn(accum, step.value, k)
-        set step a.next()
+        set step next!a
         inc k
       yield accum
 
@@ -568,17 +638,17 @@ reduce_op unbound task given a, fn
     return accum
     
   if mustIterate(a)
-    return call process
+    return !process
       set a | iterate // activate iterator if necessary
-      set step a.next()
+      set step next!a
       if step.done
         return undefined
       set accum copy step.value
       set k 1
-      set step a.next()
+      set step next!a
       until step.done
         set accum fn(accum, step.value, k)
-        set step a.next()
+        set step next!a
         inc k
       yield accum
 
@@ -638,23 +708,23 @@ slice_op unbound task given a, st, ct
       return a.substring(0, ct)
     set len a.length
     if undefined is st and ct<0     // u, -ct
-      return call a.substring len+ct, len
+      return substring!a len+ct, len
     elsif 0 is st and ct<0        // 0, -ct
-      return call a.substring 0, len+ct
+      return substring!a 0, len+ct
     elsif st>0                    
       if ct<0                       // +st, -ct
-        return call a.substring st, len+ct
+        return substring!a st, len+ct
       elsif ct>0                  // +st, +ct
-        return call a.substring st, st+ct
+        return substring!a st, st+ct
       else                          // +st, u
-        return call a.substring st, len
+        return substring!a st, len
     elsif st<0                
       if ct<0                       // -st, -ct
-        return call a.substring len+st, len+ct
+        return substring!a len+st, len+ct
       elsif ct>0                  // -st, +ct
-        return call a.substring len+st, len+st+ct
+        return substring!a len+st, len+st+ct
       else
-        return call a.substring len+st, len // -st, u
+        return substring!a len+st, len // -st, u
     throw new Error 'SAI: Bad parameters in call to LIMIT/slice'
   
   // zero count 
@@ -680,7 +750,7 @@ slice_op unbound task given a, st, ct
     if isArray(a)
       return a.slice(0,ct)
     else
-      return call process
+      return !process
         iterate a
           if key < ct .. yield it
           else .. break
@@ -688,23 +758,23 @@ slice_op unbound task given a, st, ct
   if isArray(a)
     set len a.length
     if undefined is st and ct<0     // u, -ct
-      return call a.slice len+ct, len
+      return slice!a len+ct, len
     elsif 0 is st and ct<0        // 0, -ct
-      return call a.slice 0, len+ct
+      return slice!a 0, len+ct
     elsif st>0                    
       if ct<0                       // +st, -ct
-        return call a.slice st, len+ct
+        return slice!a st, len+ct
       elsif ct>0                  // +st, +ct
-        return call a.slice st, st+ct
+        return slice!a st, st+ct
       else                          // +st, u
-        return call a.slice st, len
+        return slice!a st, len
     elsif st<0                
       if ct<0                       // -st, -ct
-        return call a.slice len+st, len+ct
+        return slice!a len+st, len+ct
       elsif ct>0                  // -st, +ct
-        return call a.slice len+st, len+st+ct
+        return slice!a len+st, len+st+ct
       else
-        return call a.slice len+st, len // -st, u
+        return slice!a len+st, len // -st, u
     throw new Error 'SAI: Bad parameters in call to LIMIT/slice'
   
   // generator
@@ -738,12 +808,12 @@ slice_op unbound task given a, st, ct
 
   set a | iterate
   
-  return call process
+  return !process
     set cache empty
-    set v a.next()
+    set v next!a
     until skip <= 0 or v.done
       dec skip
-      set v a.next()
+      set v next!a
     until v.done
       cache.push v.value
       if cache.length > size
@@ -752,7 +822,7 @@ slice_op unbound task given a, st, ct
             if only <= 0 .. return
             dec only // this code relies on behaviour of "undefined"
             yield it
-      set v a.next()
+      set v next!a
     while cache.length > crop
       yield cache.shift()
       
@@ -811,7 +881,7 @@ overlay_op unbound task given l, r
     set l copy self
     if mustIterate(r)                   // left static, right iterate
       if isArray(l)
-        return call process
+        return !process
           iterate r
             yield it ? l\key
       else
@@ -833,7 +903,7 @@ overlay_op unbound task given l, r
   set l | iterate                    
   if mustIterate(r)                     // left iterate, right iterate
     set r | iterate
-    return call process
+    return !process
       set vl l.next()
       set vr r.next()
       until vr.done
@@ -843,7 +913,7 @@ overlay_op unbound task given l, r
       yielding l
       
   set r copy self                       // left iterate, right static
-  return call process
+  return !process
     set i 0
     set v l.next()
     until v.done
@@ -877,7 +947,7 @@ select_op unbound task given src, manifest
       
     elsif mustIterate(manifest)             // array, iterator
       set src copy src
-      return call process
+      return !process
         iterate manifest
           yield src[it]
           
@@ -889,7 +959,7 @@ select_op unbound task given src, manifest
   elsif mustIterate(src)
     if mustIterate(manifest)                  // iterator, iterator
       set src | iterate
-      return call process
+      return !process
         set l src.next()
         set buffer empty
         iterate manifest
@@ -901,7 +971,7 @@ select_op unbound task given src, manifest
     if isArray(manifest)                      // iterator, array
       set manifest copy manifest
       set src | iterate
-      return call process
+      return !process
         set l src.next()
         set buffer empty
         ply manifest
@@ -911,7 +981,7 @@ select_op unbound task given src, manifest
           yield buffer[it]
         
     set manifest self | keys | thru number . | by it asc
-    return call process
+    return !process
       set i 0
       iterate src
         if key is manifest[i]
@@ -921,7 +991,7 @@ select_op unbound task given src, manifest
           
   if mustIterate(manifest)                    // traits, iterator
     set src copy src
-    return call process
+    return !process
       iterate manifest
         if it isnt undefined
           yield src[it]
@@ -941,6 +1011,101 @@ select_op unbound task given src, manifest
     
   return result
 
+
+// asearch 
+//
+// checks an array, for a value. Returns index or undefined
+//
+
+asearch_op task given a, e
+  count a.length
+    if a\counter is e
+      return counter
+  return undefined
+
+
+// in
+//
+// queries a collection for one or more elements
+//
+// type: and - all elements must exist, we return true, otherwise undefined.
+//       or - any element must exist, we return the first one we find, otherwise undefined
+//
+// first collection is the pool
+// second collection is the query
+//
+// query can be a generator but it is drained and cached
+// undef or zero elements on either side returns false/undef
+// 
+// for traits, keys are checked, values ignored
+// 
+// this is an On2 function if no matches are found
+
+in_op task given pool, query, type
+  unless exists pool and exists query 
+    return undefined
+
+  switch collectionType(query)
+  case 'array'
+    if type is 'and' // because we modify the query array
+      set query copy self 
+  case 'iterator'
+    set query | collect
+  else
+    set query: self
+
+  switch type
+  case 'and'
+    switch collectionType(pool)
+    case 'array'
+      ply pool as v
+        exists asearch_op(query,v)
+          if query.length is 1
+            return true
+          splice!query it,1
+    case 'iterator'
+      iterate pool as v
+        exists asearch_op(query,v)
+          if query.length is 1
+            return true
+          splice!query it,1
+    case 'object'
+      each pool as v,k
+        exists asearch_op(query,k)
+          if query.length is 1
+            return true
+          splice!query it,1
+    case 'scalar'
+      if query.length is 1 and pool is query.0
+        return true
+    else
+      throw new Error "SAI Runtime: in_op got an unexpected collection type: ${trial}"
+      
+  case 'or'
+    switch collectionType(pool)
+    case 'array'
+      ply pool as v
+        exists asearch_op(query,v)
+          return v
+    case 'iterator'
+      iterate pool as v
+        exists asearch_op(query,v)
+          return v
+    case 'object'
+      each pool as v,k
+        exists asearch_op(query,k)
+          return k
+    case 'scalar'
+      exists asearch_op(query,pool)
+        return query
+    else
+      throw new Error "SAI Runtime: in_op got an unexpected collection type: ${trial}"
+
+  else
+    throw new Error "SAI Runtime: in_op got an illegal operation type: ${type}"
+
+  return undefined
+  
 
 // update
 //
@@ -1284,7 +1449,7 @@ finalizePrototype unbound task given proto
   
   if proto.__unverified
     each proto.__contracts
-      unless hasOwnProperty'd proto it
+      unless hasOwnProperty!proto it
         throw new Error "SAI: Contractually required trait ${it} does not exist in object ${proto.isa}."
     delete proto.__unverified
     delete proto.__contracts
@@ -1308,19 +1473,22 @@ create_op_base task given name, parameters
     set fn name + '.js'
     set src FS.readFileSync(fn,'utf8')
     if '#!' is src | limit 0, 2 
-      set src replace'd self /\#\![^\r\n\u0085\u2028\u2029]+/, ''
+      set src self.replace( /\#\![^\r\n\u0085\u2028\u2029]+/, '' )
     set src '(function(exports, require, module, __filename, __dirname) {${src}});'
-    set mod call ~eval src
-    set proto call mod blank, ~require, blank, fn, ~__dirname
+    set mod ~eval(src)
+    set proto mod(blank, ~require, blank, fn, ~__dirname)
     set _protocache[name] proto
 
   unless proto
     throw new Error 'SAI.Create: Do not know how to create SAI object ${name}.';
 
-  set obj ~Object.create(proto)
-  if obj.Constructor .. obj.Constructor
-  if obj.Instantiate .. obj.Instantiate.apply obj, parameters
-  return obj
+  if 'function' is typeof proto
+    return proto.apply(undefined,parameters)
+  else
+    set obj ~Object.create(proto)
+    if obj.Constructor .. obj.Constructor
+    if obj.Instantiate .. obj.Instantiate.apply obj, parameters
+    return obj
 
 
 // singleton
@@ -1329,7 +1497,7 @@ create_op_base task given name, parameters
 //
 
 singleton_op task given name, parameters
-  set _singletoncache[name] default call create_op name, parameters
+  set _singletoncache[name] default create_op(name, parameters)
   return _singletoncache[name]
 
 
